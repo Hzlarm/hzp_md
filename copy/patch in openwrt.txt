@@ -1,0 +1,155 @@
+cat > ~/.quiltrc <<EOF
+QUILT_DIFF_ARGS="--no-timestamps --no-index -p ab --color=auto"
+QUILT_REFRESH_ARGS="--no-timestamps --no-index -p ab"
+QUILT_SERIES_ARGS="--color=auto"
+QUILT_PATCH_OPTS="--unified"
+QUILT_DIFF_OPTS="-p"
+EDITOR="vim"
+EOF
+
+
+
+https://oldwiki.archive.openwrt.org/doc/devel/patches
+
+https://openwrt.org/docs/guide-developer/helloworld/chapter8
+
+https://blog.csdn.net/caofengtao1314/article/details/82768555
+
+make kernel patch for openwrt with quilt
+准备工作
+准备build_dir下的工作环境
+
+make target/linux/{clean，prepare} QUILT=1
+
+进入到kernel工作目录（注意本目录下有一个patches目录，所有的已经存在的patch是放在这个目录下的）
+
+生成新的patch文件 (可以带目录，如果不带目录，那么就会在patches/目录下生产这个patch文件)
+
+quilt new patch-文件名.patch
+
+修改文件
+
+首先需要把要修改的文件track到quilt中
+quilt add 需要修改的文件 * 然后修改文件，通过任何的编辑工具均可 * 最后把修改更新到去quilt的patch文件中
+
+quilt refresh
+
+最后把patch文件copy到对应的patch目录中,所有的patch均会做重新拷贝
+
+make target/linux/update V=s
+
+验证，需要注意log中是否所有的patch都无冲突的加上了，这一点很重要！
+
+make target/linux/{clean,compile}
+############################openwrt uClibc 打补丁#############################
+
+ 2366  make toolchain/uClibc/{clean,prepare} V=99 QUILT=1
+ 2367  ls toolchain/uClibc/patches-0.9.33.2/
+ 2368  quilt new 999-fix_malloc_thread_safe.patch
+ 2369  ls toolchain/uClibc/patches-0.9.33.2/
+       cd build_dir/toolchain-mipsel_24kec+dsp_gcc-4.8-linaro_uClibc-0.9.33.2/uClibc-0.9.33.2/
+ 2370  quilt edit libc/stdlib/malloc-standard/free.c 
+ 2371  quilt edit libc/stdlib/malloc-standard/calloc.c 
+ 2372  quilt edit libc/stdlib/malloc-standard/Makefile.in 
+ 2373  quilt edit libc/stdlib/malloc-standard/mallinfo.c 
+ 2374  quilt edit libc/stdlib/malloc-standard/malloc.c 
+ 2375  quilt edit libc/stdlib/malloc-standard/malloc.h
+ 2376  quilt edit libc/stdlib/malloc-standard/malloc_usable_size.c
+ 2377  quilt edit libc/stdlib/malloc-standard/memalign.c 
+ 2378  quilt edit libc/stdlib/malloc-standard/realloc.c 
+
+要在build_dir/toolchain-mipsel_24kec+dsp_gcc-4.8-linaro_uClibc-0.9.33.2/uClibc-0.9.33.2/目录下执行quilt refresh
+
+执行quilt refresh后
+cd {root directory of openwrt}
+执行make toolchain/uClibc/update V=s 会将build_dir目录下的patch拷贝会package目录的patches目录下
+
+
+####################################################################
+https://openwrt.org/docs/guide-developer/patches
+
+make package/network/services/uhttpd/{clean,prepare} V=99 QUILT=1
+cd package/network/services/uhttpd/
+mkdir patches
+
+cd build_dir/target-mipsel_24kec+dsp_uClibc-0.9.33.2/uhttpd-2015-11-08/
+quilt push -a
+quilt new 001-modify_basic_auth_code.patch
+quilt edit auth.c
+cd build_dir/target-mipsel_24kec+dsp_uClibc-0.9.33.2/uhttpd-2015-11-08/
+quilt refresh
+cd {openwrt root directory}
+make package/network/services/uhttpd/update V=s
+make package/network/services/uhttpd/compile V=s
+
+vi build_dir/target-mipsel_24kec+dsp_uClibc-0.9.33.2/uhttpd-2015-11-08/auth.c
+
+---------------
+quilt new 002-add_usr_sig_reload_config.patch
+
+/usr/sbin/uhttpd -f -h /www -r Thingoo -c /etc/httpd.conf -x /cgi-bin -t 60 -T 30 -k 20 -A 1 -n 3 -N 100 -p 0.0.0.0:80
+
+================给内核的cp210x.c打补丁=======================
+
+
+
+make target/linux/{clean,prepare} V=s QUILT=1
+
+cd build_dir/target-*/linux-*/linux-3.*
+
+quilt series 
+quilt push -a
+
+quilt new generic/999-usb_serial_cp210x_update.patch
+//quilt push generic/999-usb_serial_cp210x_update.patch
+
+quilt edit drivers/usb/serial/cp210x.c
+quilt refresh
+
+cd {root directory of openwrt}
+make target/linux/update package/index V=s
+make target/linux/compile V=s
+
+================给mosquitto打补丁=======================
+
+make package/feeds/packages/mosquitto/{clean,prepare} V=s QUILT=1
+
+cd build_dir/target-mipsel_24kec+dsp_uClibc-0.9.33.2/mosquitto-ssl/mosquitto-1.6.2/
+
+quilt new 001-shorten-connection-timeout.patch
+
+quilt edit lib/net_mosq.c
+
+quilt refresh
+
+cd {root directory of openwrt}
+make package/feeds/packages/mosquitto/update V=s
+make package/feeds/packages/mosquitto/compile V=s
+
+
+================给gdb打补丁修复Remote 'g' packet reply is too long=======================
+
+
+make  toolchain/gdb/{clean,prepare} V=s QUILT=1
+
+cd build_dir/toolchain-mipsel_24kec+dsp_gcc-4.8-linaro_uClibc-0.9.33.2/gdb-linaro-7.6-2013.05/
+
+quilt new 700-fix-remote-g-packet-reply-too-long.patch
+
+quilt refresh
+
+make  toolchain/gdb/update V=s
+make  toolchain/gdb/compile V=s
+
+
+
+
+
+
+
+
+
+
+
+
+

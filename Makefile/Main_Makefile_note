@@ -1,0 +1,110 @@
+# Makefile for OpenWrt
+#
+# Copyright (C) 2007 OpenWrt.org
+#
+# This is free software, licensed under the GNU General Public License v2.
+# See /LICENSE for more information.
+# Main  Makefile  分为三部分：前导部分、首次执行部分、再次执行部分
+
+#定义TOPDIR为当前目录
+TOPDIR:=${CURDIR}
+#LC_ALL=C 是为了去除所有本地化的设置，让命令能正确执行。
+LC_ALL:=C
+#LC_*的默认值，是最低级别的设置，如果LC_*没有设置，则使用该值。类似于 LC_ALL。
+LANG:=C
+#主Makefile导出变量供子Makefile使用
+export TOPDIR LC_ALL LANG
+#OpenWrt目录的路径不能包含任何空格,如果包含则报错
+empty:=
+space:= $(empty) $(empty)
+$(if $(findstring $(space),$(TOPDIR)),$(error ERROR: The path to the OpenWrt directory must not include any spaces))
+#当make命令不带目标时执行该目标。world目标的命令需要进一步参考$(TOPDIR)/include/toplevel.mk和主Makefile文件的再次执行部分。
+world:
+#引入host.mk。主Makefile多次使用include指示符，说明主Makefile文件被拆分成多个文件，被拆分的文件放在不同的目录。拆分的目的是明确各部分的功能，而且增加其灵活性。
+include $(TOPDIR)/include/host.mk
+#********以上为前导部分***********************************************************************************************************************************************************
+#OPENWRT_BUILD是区分首次执行与再次执行的变量。在首次执行时使用强制赋值指示符override把OPENWRT_BUILD赋值为1，并使用变量延伸指示符export把OPENWRT_BUILD延伸。
+##在OPENWRT_BUILD使用强制赋值指示符override意味着make命令行可能引入OPENWRT_BUILD参数。
+ifneq ($(OPENWRT_BUILD),1)
+  _SINGLE=export MAKEFLAGS=$(space);
+
+  override OPENWRT_BUILD=1
+  export OPENWRT_BUILD
+  GREP_OPTIONS=
+  export GREP_OPTIONS
+#引入三个文件，其中$(TOPDIR)/include/toplevel.mk的173行%::进行重建规则，有效解释首次执行时 world 目标的规则。简化为两句 make prereq（桌面图片）与make $@（即make world）  
+##这些.mk文件一般没有什么执行动作,都是一些变量的定义还有依赖关系的说明.可以类比于C语言的头文件来理解.
+###debug.mk:可以通过定义DEBUG的值来控制编译过程。depends.mk主要定义了rdep。toplevel.mk是我们跟踪编译过程的重要的文件.
+  include $(TOPDIR)/include/debug.mk
+  include $(TOPDIR)/include/depends.mk
+  include $(TOPDIR)/include/toplevel.mk
+#********以上为首次执行部分**************************************************************************************************************************************************************
+#********以下为再次执行部分**************************************************************************************************************************************************************
+else
+  include rules.mk
+#在文件rules.k中定义的INCLUDE_DIR=$(TOPDIR)/include，所以这里引入的depends.mk,与首次执行引入的是同一个文件。
+##同时mk文件规定了很多有用的变量,包括各种目录路径的定义,交叉编译器等等.其中.config文件就是一大串变量的定义.Makefile可以直接读取这些定义,从而控制编译过程.
+  include $(INCLUDE_DIR)/depends.mk 
+  include $(INCLUDE_DIR)/subdir.mk
+#四个Makefile不能独立运行，由subdir.mk动态的建立规则。如$(toolchain/stamp-install)目标是靠$(INCLUDE_DIR)/subdir.mk的 stampfile 函数动态建立。
+##定义一些使用变量命名的目标，其变量的赋值位置在$(INCLUDE_DIR)/subdir.mk的 stampfile 函数中。目标只有依赖关系，可能说明其工作顺序，在$(INCLUDE_DIR)/subdir.mk的
+###stampfile函数中有进一步说明其目标执行的命令，并为目标建立一个空文件，即使用变量命名的目标为真实的文件。
+  include target/Makefile
+  #在package/Makefile动态建立了$(package/stamp-prereq)、$(package/stamp-cleanup)、$(package/ stamp-compile)、$(package/stamp-install)、$(package/ stamp-rootfs-prepare)目标。
+  include package/Makefile
+  include tools/Makefile
+  include toolchain/Makefile
+
+$(toolchain/stamp-install): $(tools/stamp-install)
+$(target/stamp-compile): $(toolchain/stamp-install) $(tools/stamp-install) $(BUILD_DIR)/.prepared
+$(package/stamp-compile): $(target/stamp-compile) $(package/stamp-cleanup)
+$(package/stamp-install): $(package/stamp-compile)
+$(target/stamp-install): $(package/stamp-compile) $(package/stamp-install)
+
+#定义一些使用固定的目标规则
+##什么也不做设置退出码为0，false表示1
+printdb:
+	@true
+
+prepare: $(target/stamp-compile)
+
+clean: FORCE
+	rm -rf $(BUILD_DIR) $(STAGING_DIR) $(BIN_DIR) $(BUILD_LOG_DIR)
+
+dirclean: clean
+	rm -rf $(STAGING_DIR_HOST) $(TOOLCHAIN_DIR) $(BUILD_DIR_HOST) $(BUILD_DIR_TOOLCHAIN)
+	rm -rf $(TMP_DIR)
+#预处理
+ifndef DUMP_TARGET_DB
+$(BUILD_DIR)/.prepared: Makefile
+	@mkdir -p $$(dirname $@)
+	@touch $@
+
+tmp/.prereq_packages: .config
+	unset ERROR; \
+	for package in $(sort $(prereq-y) $(prereq-m)); do \
+		$(_SINGLE)$(NO_TRACE_MAKE) -s -r -C package/$$package prereq || ERROR=1; \
+	done; \
+	if [ -n "$$ERROR" ]; then \
+		echo "Package prerequisite check failed."; \
+		false; \
+	fi
+	touch $@
+endif
+
+# check prerequisites before starting to build
+prereq: $(target/stamp-prereq) tmp/.prereq_packages
+	@if [ ! -f "$(INCLUDE_DIR)/site/$(ARCH)" ]; then \
+		echo 'ERROR: Missing site config for architecture "$(ARCH)" !'; \
+		echo '       The missing file will cause configure scripts to fail during compilation.'; \
+		echo '       Please provide a "$(INCLUDE_DIR)/site/$(ARCH)" file and restart the build.'; \
+		exit 1; \
+	fi
+
+prepare: .config $(tools/stamp-install) $(toolchain/stamp-install)
+world: prepare $(target/stamp-compile) $(package/stamp-compile) $(package/stamp-install) $(target/stamp-install) FORCE
+	$(_SINGLE)$(SUBMAKE) -r package/index
+
+.PHONY: clean dirclean prereq prepare world package/symlinks package/symlinks-install package/symlinks-clean
+
+endif

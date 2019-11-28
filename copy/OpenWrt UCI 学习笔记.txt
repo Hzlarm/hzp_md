@@ -1,0 +1,275 @@
+uci命令修改网关IP
+uci set network.lan..ipaddr=192.168.99.1
+uci commit network
+/etc/init.d/network restart 
+
+root@Thingoo:/etc/config# uci set hello.hello.name=minew
+root@Thingoo:/etc/config# uci commit
+root@Thingoo:/etc/config# uci show hello 
+
+
+uci export network
+uci commit
+uci show hello
+uci set network.lan.ipaddr=192.168.88.1
+uci export network 
+uci import
+uci add network test
+uci export network 
+uci add_list network.lan.ip2=1.2.3.4
+uci export network
+uci del_list network.lan.ip2=1.2.3.4
+uci show
+uci show network 
+uci show network.lan
+uci show network.lan.ipaddr
+uci get network.lan
+uci get network.lan.ifname
+uci set network.lan.ipaddr=1.0.0.1
+uci shwo network 
+ uci delete network.lan.ip2
+ uci delete network.lan.@test[0]
+uci rename network.lan.ipaddr=ip
+uci add_list system.ntp.server='ntp.bjbook.net'#增加到链表中一个配置项
+uci del_list system.ntp.server='ntp.ntp.org'#删除链表中的一个配置项
+uci delete system.ntp.server #删除链表中的所有配置项
+
+
+
+
+
+
+https://blog.csdn.net/rainforest_c/article/details/70139962
+UCI (Unified Configuration Interface, 统一配置接口) 是OpenWrt的集中配置管理工具，关于UCI的具体介绍可以查看官方文档—The UCI System
+
+可以通过ubuntu安装UCI或使用openwrt的板子来获得UCI测试环境
+
+UCI文件格式
+UCI文件使用下例所示的固定格式：
+
+package 'example'
+
+config 'example' 'test'
+        option   'string'      'some value'
+        option   'boolean'     '1'
+        list     'collection'  'first item'
+        list     'collection'  'second item'
+
+package 'example'中的’example’实际上就是UCI文件的文件名，例如/etc/config/network对应 package ‘network’，但是这个语句不会存在文件中，需要通过命令uci export network查看。
+config 'example' 'test'语句定义了一个type为example，名字为test的section。section可以只有type而没有名字，这类section称为匿名的section，后文会有说明。
+option 'string' 'some value'语句定义了section下的一个option，该option标识为string，值为some value。
+list 'collection' 'first item'语句定义了section下的一个list，list与option不同之处在于list可以有多个值，该例子中的list collection有first item和second item两个值。
+普通节点示例 
+
+
+匿名节点示例 
+
+
+UCI命令
+root@OpenWrt:/lib/config# uci
+Usage: uci [<options>] <command> [<arguments>]
+
+Commands:
+    batch
+    export     [<config>]
+    import     [<config>]
+    changes    [<config>]
+    commit     [<config>]
+    add        <config> <section-type>
+    add_list   <config>.<section>.<option>=<string>
+    del_list   <config>.<section>.<option>=<string>
+    show       [<config>[.<section>[.<option>]]]
+    get        <config>.<section>[.<option>]
+    set        <config>.<section>[.<option>]=<value>
+    delete     <config>[.<section[.<option>]]
+    rename     <config>.<section>[.<option>]=<name>
+    revert     <config>[.<section>[.<option>]]
+    reorder    <config>.<section>=<position>
+
+Options:
+    -c <path>  set the search path for config files (default: /etc/config)
+    -d <str>   set the delimiter for list values in uci show
+    -f <file>  use <file> as input instead of stdin
+    -m         when importing, merge data into an existing package
+    -n         name unnamed sections on export (default)
+    -N         don't name unnamed sections
+    -p <path>  add a search path for config change files
+    -P <path>  add a search path for config change files and use as default
+    -q         quiet mode (don't print error messages)
+    -s         force strict mode (stop on parser errors, default)
+    -S         disable strict mode
+    -X         do not use extended syntax on 'show'
+
+请在/etc/config目录下创建一个文件network，内容如下
+
+config interface 'lan'
+        option ifname 'eth2'
+        option proto 'static'
+        option ipaddr '192.168.1.1'
+        option netmask '255.255.255.0'
+        option ip6addr 'fec0::1/64'
+
+batch 
+批处理uci命令，命令不包含字符串”uci”
+
+例如要批处理以下两个命令
+uci set test.test1=test2
+uci set test.test1.test3=test4
+
+只需要把这两个命令去掉uci后放到文档a.txt里面
+cat a.txt
+set test.test1=test2
+set test.test1.test3=test4
+
+然后执行
+uci batch < a.txt
+
+commit 
+提交uci修改，当命令uci changes有返回结果时表示有uci修改待提交，可以通过命令uci commit完成提交，即写入到配置文件。 
+uci commit可以提交具体的package，例如uci commit network表示只提交network部分的修改。
+
+export 
+导出配置文件为可读的格式
+
+root@OpenWrt:/etc/config# uci export network
+package network
+
+config interface 'lan'
+        option ifname 'eth2'
+        option proto 'static'
+        option ipaddr '192.168.1.1'
+        option netmask '255.255.255.0'
+        option ip6addr 'fec0::1/64'
+import 
+导入配置文件为UCI格式
+
+root@OpenWrt:/etc/config# uci import
+>package test
+>config test1 test2
+>option test3 test4
+>ctrl + D
+
+执行上述命令后会得到文件’test’
+
+root@OpenWrt:/etc/config# cat test
+
+config test1 'test2'
+        option test3 'test4'
+
+changes 
+追踪修改但未提交的动作
+
+add 
+添加一条匿名的section
+
+root@OpenWrt:/etc/config# uci add network test
+root@OpenWrt:/etc/config# uci export network
+package network
+
+config interface 'lan'
+        option ifname 'eth2'
+        option proto 'static'
+        option netmask '255.255.255.0'
+        option ip6addr 'fec0::1/64'
+
+config test
+
+add_list 
+添加一条list
+
+root@OpenWrt:/etc/config# uci add_list network.lan.ip2=1.2.3.4
+root@OpenWrt:/etc/config# uci export network
+package network
+
+config interface 'lan'
+        option ifname 'eth2'
+        option proto 'static'
+        option ipaddr '192.168.1.1'
+        option netmask '255.255.255.0'
+        option ip6addr 'fec0::1/64'
+        list ip2 '1.2.3.4'
+
+config test
+
+del_list 
+删除一条list，由于list可以存在多个值，所以必须指定删除的值
+
+root@OpenWrt:/etc/config# uci del_list network.lan.ip2=1.2.3.4
+root@OpenWrt:/etc/config# uci export network
+package network
+
+config interface 'lan'
+        option ifname 'eth2'
+        option proto 'static'
+        option ipaddr '192.168.1.1'
+        option netmask '255.255.255.0'
+        option ip6addr 'fec0::1/64'
+
+config test
+
+show 
+用压缩格式显示all, package, section或option的值，依参数而定
+
+uci show                    --- show all
+uci show network            --- show network
+uci show network.lan        --- show network.lan
+uci show network.lan.ipaddr --- show network.lan.ipaddr
+
+root@OpenWrt:/etc/config# uci show network
+network.lan=interface
+network.lan.ifname=eth2
+network.lan.proto=static
+network.lan.ipaddr=192.168.1.1
+network.lan.netmask=255.255.255.0
+network.lan.ip6addr=fec0::1/64
+network.lan.ip2=
+network.@test[0]=test
+
+get 
+获取指定section或option的值，与uci show等号两边对应
+
+root@OpenWrt:/etc/config# uci get network.lan
+interface
+root@OpenWrt:/etc/config# uci get network.lan.ifname
+eth2
+
+set 
+为指定section或option赋值(不存在则创建该对象)，格式可以参考uci show的结果
+
+root@OpenWrt:/etc/config# uci set network.lan.ipaddr=10.0.0.1
+root@OpenWrt:/etc/config# uci show network
+network.lan=interface
+network.lan.ifname=eth2
+network.lan.proto=static
+network.lan.netmask=255.255.255.0
+network.lan.ip6addr=fec0::1/64
+network.lan.ip2=
+network.lan.ipaddr=10.0.0.1
+network.@test[0]=test
+
+delete 
+删除指定section或option
+
+root@OpenWrt:/etc/config# uci delete network.lan.ip2
+root@OpenWrt:/etc/config# uci delete network.@test[0]
+root@OpenWrt:/etc/config# uci show network
+network.lan=interface
+network.lan.ifname=eth2
+network.lan.proto=static
+network.lan.netmask=255.255.255.0
+network.lan.ip6addr=fec0::1/64
+network.lan.ipaddr=10.0.0.1
+1
+
+rename 
+重命名section或option
+
+root@OpenWrt:/etc/config# uci rename network.lan.ipaddr=ip
+root@OpenWrt:/tmp/etc/config# uci show network
+network.lan=interface
+network.lan.ifname=eth2
+network.lan.proto=static
+network.lan.netmask=255.255.255.0
+network.lan.ip6addr=fec0::1/64
+network.lan.ip=10.0.0.1
+
