@@ -13,13 +13,21 @@ $ git config --global user.email "xxx@.com"
 
 `--local` 是将这些内容写入 project 下的 .git/config 文件中，每个project都可以有不同的配置。
 
+设置完新的ssh文件后， windows下每次重新开始起git bash 都要执行以下命令 或者添加到git安装目录的etc/bash.bashrc文件末尾。
+
+```bash
+ssh-agent -s 
+ssh-agent bash
+ssh-add ~/.ssh/id_rsa_github
+```
+
 
 
 * mkdir：         XX (创建一个空目录 XX指目录名)   
 * pwd：          显示当前目录的路径。
 * git init          把当前的目录变成可以管理的git仓库，生成隐藏.git文件。    
 * git add XX       把xx文件添加到暂存区去。
-* git co–m “XX”  提交文件 –m 后面的是注释。 再次修改后加上-a跳过git add步骤。加--amend 修正上一次提交  
+* git commit –m “XX”  提交文件 –m 后面的是注释。 再次修改后加上-a跳过git add步骤。加--amend 修正上一次提交  
 * git status        查看仓库状态
 * git diff  XX      查看XX文件修改了那些内容 
 * git rm XX          删除XX文件 如果已经add到缓存区域的话加-r删除
@@ -116,6 +124,56 @@ fetch常结合merge一起用，git fetch + git merge == git pull
  一般要用git fetch+git merge，因为git pull会将代码直接合并，造成冲突等无法知道，fetch代码下来要git diff orgin/xx来看一下差异然后再合并。
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+git bash 不显示中文 
+
+ `git config --global core.quotepath false `  基本可以解决
+
+ 在 git log 时中文依然不能显示，首先试试用 git --no-pager log 能不能显示中文，如果可以，则设置pager为more： git config --global core.pager more  
+
+2.设置 commit log 提交时使用 utf-8 编码，可避免服务器上乱码，同时与linux上的提交保持一致！
+
+git config --global i18n.commitencoding utf-8
+
+git config --global i18n.logoutputencoding **utf-8**
+
+注：
+
+windows系统默认编码为gbk，可改成gbk
+
+如果系统设置了：
+
+export LANG=zh_CN.UTF-8
+
+则日志输出编码设置为utf-8
+
+git config --global i18n.logoutputencoding utf-8
+
+3.在 /etc/profile 中添加：
+
+export LESSCHARSET=utf-8
+
+在试一下问题解决了！
 
 
 
