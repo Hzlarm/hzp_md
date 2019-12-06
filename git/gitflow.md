@@ -140,12 +140,6 @@ git flow hotfix finish test
 
 
 
-
-
-
-
-
-
 Git Flow流程开发流程：以发布为中心
 
 一个较为复杂的开发分支流程：

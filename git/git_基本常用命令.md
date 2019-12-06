@@ -125,26 +125,6 @@ fetch常结合merge一起用，git fetch + git merge == git pull
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 git bash 不显示中文 
 
  `git config --global core.quotepath false `  基本可以解决
