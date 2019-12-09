@@ -558,7 +558,7 @@ ttyATH0::askfirst:/bin/ash --login  #不需要输入用户名与密码
 
 从上面的分析可以看出它在开机启动的时候执行/etc/init.d/rcS脚本，以前是有/etc/init.d/rcS脚本的，现在的openwrt已经去掉了这个脚本文件，只要有rcSSboot这几个参数就可以，但是功能是有的就是按顺序执行/etc/rc.d下面的各个脚本，以S开头代表启动的时候执行的脚本，与命令行中的S对应，以K开头的代表关机的时候需要执行的脚本，与命令行中的K对应。
 
- [关于init.d/目录下的启动脚本]( https://blog.csdn.net/hzlarm/article/details/103028193 )
+ [关于init.d/目录下的启动脚本](https://blog.csdn.net/hzlarm/article/details/103028193 )
 
 源码proced*/inittab.c中
 
