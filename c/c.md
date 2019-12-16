@@ -1,7 +1,5 @@
 
 
-
-
 #### fflush(stdin)与fflush(stdout)
 
  fflush函数被广泛使用在多线程、网络编程的消息处理中。 
@@ -20,13 +18,39 @@
 
  如果成功刷新,fflush返回0。指定的流没有缓冲区或者只读打开时也返回0值。返回EOF指出一个错误。 
 
+#### dup与dup2
 
+ 在linux下，一切皆文件。当文件被打开时，会返回文件描述符用于操作该文件，从shell中运行一个进程，默认会有3个文件描述符存在(0、１、2)；）0表示标准输入，1表示标准输出，2表示标准错误。一个进程当前有哪些打开的文件描述符可以通过/proc/进程ID/fd目录查看。 
 
+#####  dup函数
 
-
-
-
+```c
+#include <unistd.h>
+int dup(int oldfd);
+//调用dup(oldfd)等效于 fcntl(oldfd, F_DUPFD, 0)
 ```
+
+dup用来复制参数oldfd所指的文件描述符。当复制成功是，返回最小的尚未被使用过的文件描述符，若有错误则返回-1.错误代码存入errno中返回的新文件描述符和参数oldfd指向同一个文件，这两个描述符共享同一个数据结构，共享所有的锁定，读写指针和各项全现或标志位。
+
+##### dup2函数
+头文件及其定义：
+
+
+```c
+ #include <unistd.h>
+ int dup2(int oldfd, int newfd);
+//dup2(oldfd, newfd)等效于		close(newfd);	fcntl(oldfd, F_DUPFD, newfd);如果old_fd是无效的，new_fd不会被close。
+```
+
+dup2与dup区别是dup2可以用参数newfd指定新文件描述符的数值。若参数newfd已经被程序使用，则系统就会将newfd所指的文件关闭，若newfd等于oldfd，则返回newfd,而不关闭newfd所指的文件。dup2所复制的文件描述符与原来的文件描述符共享各种文件状态。共享所有的锁定，读写位置和各项权限或flags等.
+返回值：
+若dup2调用成功则返回新的文件描述符，出错则返回-1.
+
+在shell的重定向功能中，(输入重定向”<”和输出重定向”>”)就是通过调用dup或dup2函数对标准输入和标准输出的操作来实现的。
+
+
+
+```c
 ssize_t system_with_result(const char *cmd, void *buf, size_t count)
 {
     int len = -1;
@@ -73,57 +97,38 @@ ssize_t system_with_result(const char *cmd, void *buf, size_t count)
 
 
 
-```
-/* dup,dup2实现stdout重定向 */
-#include <unistd.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <string.h>
-int main(void)
-{
-	int fd, tempfd;
-	char buf[] = "Am I in the stdout or in the file?\n";
-	if( (fd = open("tempfile", O_WRONLY | O_CREAT | O_TRUNC, 0644)) == -1 )
-	{
-		perror("open file error");
-		exit(1);
-	}
-	/* 保存STDOUT_FILENO文件描述符 */
-	if( (tempfd = dup(STDOUT_FILENO)) == -1 )
-	{
-		perror("dup error");
-		exit(1);
-	}
-	/* 使文件描述符1——STDOUT_FILENO指向tempfile */
-	if(dup2(fd, STDOUT_FILENO) == -1)
-	{
-		perror("dup2 error");
-		exit(1);
-	}
-	printf("printf:I am also in stdout!\n");	/* printf()并没有输出到文件，而且是在程序结束时输出的屏幕的，因为标准I/O缓冲区的缘故 */
-	if( write(STDOUT_FILENO, buf, strlen(buf)) == -1 )	/* 注意write()的长度 */
-	{
-		perror("write error");
-		exit(1);
-	}
-	/* 还原STDOUT_FILENO */
-	if(dup2(tempfd, STDOUT_FILENO) == -1)
-	{
-		perror("dup2 error");
-		exit(1);
-	}
-	close(fd);
-	close(tempfd);	/* tempfd指向stdout,所谓关闭文件，并不是真正的“关闭”文件 */
-	char tempstr[] = "just test if I am in stdout.\n";
-	if( write(STDOUT_FILENO, tempstr, strlen(tempstr)) == -1 )
-	{
-		perror("write error");
-		exit(1);
-	}
-	
-	return 0;
-}
-```
+ 文件描述符表
+
+ 每种信号的处理方式(SIG_IGN、SIG_DFL或者自定义的信号处理函数)  
+
+ 当前工作目录
+
+ 用户id和组id
+
+ 但有些资源是每个线程各有一份的:
+
+线程ID
+
+ 上下文信息,包括各种寄存器的值、程序计数器和栈指针
+
+ 栈空间
+
+ errno变量
+
+ 信号屏蔽字
+
+ 调度优先级
+
+
+
+
+
+
+
+ 多线程程序的优点（相对进程比较而言）：
+
+多个线程，它们彼此之间使用相同的地址空间，共享大部分数据，启动一个线程所花费的空间远远小于启动一个进程所花费的空间，而且，线程间彼此切换所需的时间也远远小于进程间切换所需要的时间，创建销毁速度快。
+
+是线程间方便的通信机制。由于同一进程下的线程之间共享数据空间，所以一个线程的数据可以直接为其它线程所用，这不仅快捷，而且方便。
+
 
