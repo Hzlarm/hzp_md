@@ -2,7 +2,15 @@
 
 #### 什么是[uHTTPd](https://openwrt.org/zh-cn/doc/howto/http.uhttpd )
 
- **uHTTPd** 是一个 OpenWrt/LUCI 开发者从头编写的 Web 服务器。 它着力于实现一个稳定高效的服务器，能够满足嵌入式设备的轻量级任务需求，且能够与 OpenWrt 的配置框架 (UCI) 整合。默认情况下它被用于 OpenWrt 的 Web 管理接口 [LuCI](https://openwrt.org/zh/docs/techref/luci)。当然，uHTTPd 也能提供一个常规 Web 服务器所需要的所有功能。  它的 UCI 配置文件为 `/etc/config/uhttpd` 
+ **uHTTPd** 是一个 OpenWrt/LUCI 开发者从头编写的 Web 服务器。 它着力于实现一个稳定高效的服务器，能够满足嵌入式设备的轻量级任务需求，且能够与 OpenWrt 的配置框架 (UCI) 整合。默认情况下它被用于 OpenWrt 的 Web 管理接口 [LuCI](https://openwrt.org/zh/docs/techref/luci)。当然，uHTTPd 也能提供一个常规 Web 服务器所需要的所有功能。  它的 UCI 配置文件为 `/etc/config/uhttpd`  其中`option config   /etc/httpd.conf`指定了额外加载的非uci配置文件，默认为httpd.conf。例如在该文件中加入[ prefix:username:password](https://openwrt.org/docs/guide-user/services/webserver/uhttpd )。出于向后兼容的原因，uhttpd使用旧的Busybox httpd配置文件/etc/httpd.conf来定义身份验证区域以及相关的用户名和密码。此配置文件不是UCI格式prefix是域所覆盖的URL部分，例如/cgi-bin为任何cgi程序请求基本身份验证
+
+username指定客户端必须使用的用户名
+
+password定义验证所需的密码
+
+密码可以是纯文本格式、MD5编码或$p$user格式，其中user指/etc/shadow或/etc/passwd中的帐户。
+
+通过使用uhttpd可执行文件的-m开关，可以将纯文本密码转换为MD5编码。
 
 #### 参考文档
 
