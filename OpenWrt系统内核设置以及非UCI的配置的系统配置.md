@@ -95,7 +95,7 @@ export PS1='\u@\h:\w\$ '
 
 [/etc/fstab](https://openwrt.org/zh/docs/guide-user/storage/fstab_configuration)          // 各种文件系统的描述信息
 
-> Fstab, 或者叫 **f**ile **s**ystems **tab**le, 是一个集中的配置 。
+> Fstab, 或者叫 file systems table, 是一个集中的配置 。
 >
 >  定义了必要时（例如启动设备时，或者在物理上连接它时），文件系统（通过在块设备上）应该如何被挂载。这样，你不需要在你想要访问它们时，手动挂载设备。挂载配置不仅包括静态文件系统，也包括 swap 分区。 
 >
@@ -104,7 +104,7 @@ export PS1='\u@\h:\w\$ '
 > 所以如果你需要配置这个，你首先需要创建它。 
 
  创建 fstab
-你需要使用 *block* 工具。安装软件包 *block-mount*:
+你需要使用 block 工具。安装软件包 block-mount:
 ```
 root@lede:~# opkg update && opkg install block-mount
 ```
