@@ -123,7 +123,7 @@ include_dir /etc/mosquitto/conf.d
 
 添加：将生成的文件拷贝到配置文件所写的对应的位置。
 
-将客户端对应的`ca.crt		client.crt		client.key`分别添加到客户端。以及生成ca.ky时的密码。
+将客户端对应的`ca.crt		client.crt		client.key`分别添加到客户端。以及生成ca.key时的密码。
 
 
 

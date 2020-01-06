@@ -6,6 +6,14 @@
 
 ### 全局设置
 
+
+
+```　
+$ git config user.name
+$ git config user.email
+```
+
+
 ```
 $ git config --global user.name "hzlarm"
 $ git config --global user.email "731238375@qq.com" 

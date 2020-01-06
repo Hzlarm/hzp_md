@@ -132,3 +132,76 @@ ssize_t system_with_result(const char *cmd, void *buf, size_t count)
 是线程间方便的通信机制。由于同一进程下的线程之间共享数据空间，所以一个线程的数据可以直接为其它线程所用，这不仅快捷，而且方便。
 
 
+
+
+
+linux中可以使用clock_gettime系统调用来获取系统时间（秒数与纳秒数）。 纳秒为一秒的十亿分之一。
+`#include <time.h>`
+
+`int clock_gettime(clockid_t clk_id, struct timespec *tp); `
+clockid_t clk_id 用于指定计时时钟的类型，有以下4种：  
+
+CLOCK_REALTIME:系统实时时间,随系统实时时间改变而改变。
+即从UTC1970-1-1 0:0:0开始计时,中间时刻如果系统时间被用户该成其他,则对应的时间相应改变  
+
+CLOCK_MONOTONIC:从系统启动这一刻起开始计时,不受系统时间被用户改变的影响  
+
+CLOCK_PROCESS_CPUTIME_ID:本进程到当前代码系统CPU花费的时间  
+
+CLOCK_THREAD_CPUTIME_ID:本线程到当前代码系统CPU花费的时间  
+
+struct timespect *tp用来存储当前的时间，其结构如下：        
+
+```c
+struct timespec  
+{  
+    time_t tv_sec; /* seconds */  
+    long tv_nsec; /* nanoseconds */  
+};
+```
+返回值。0成功，-1失败 
+
+
+
+https://lxr.openwrt.org/source/uci/
+
+常用API
+1、uci_alloc_context: 动态申请一个uci上下文结构
+struct uci_context *uci_alloc_context(void);
+
+2、uci_free_context: 释放由uci_alloc_context申请的uci上下文结构且包括它的所有数据
+void uci_free_context(struct uci_context *ctx);
+
+3、uci_lookup_ptr：由给定的元组查找元素
+int uci_lookup_ptr(struct uci_context *ctx, struct uci_ptr *ptr, char *str, bool extended);
+
+4、uci_set ：写入配置
+int uci_set(struct uci_context *ctx, struct uci_ptr *ptr);
+
+5、uci_unload : 卸载包
+int uci_unload(struct uci_context *ctx, struct uci_package *p);
+
+6、uci_commit : 将缓冲区的更改保存到配置文件 还有uci_save ,有区别
+int uci_commit(struct uci_context *ctx, struct uci_package **p, bool overwrite);
+
+7、uci_foreach_element : 遍历uci的每个节点
+
+8、uci_perror : 获取最后一个uci错误的错误字符串
+void uci_perror(struct uci_context *ctx, const char *str);
+
+
+9、uci_add_section：配置一个节点的值，如果节点不存在则创建
+int uci_add_section(struct uci_context *ctx, struct uci_package *p, const char *type, struct uci_section **res);
+
+10、uci_add_list : 追加一个list类型到节点
+int uci_add_list(struct uci_context *ctx, struct uci_ptr *ptr);
+
+11、uci_lookup_section : 查看一个节点
+uci_section *uci_lookup_section(struct uci_context *ctx, struct uci_package *p, const char *name)
+
+12、uci_lookup_option : 查看一个选项
+ uci_option *uci_lookup_option(struct uci_context *ctx, struct uci_section *s, const char *name)
+
+
+13、int uci_load ：加载配置文件
+int uci_load(struct uci_context *ctx, const char *name, struct uci_package **package)

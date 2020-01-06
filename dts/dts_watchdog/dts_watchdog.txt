@@ -1,6 +1,6 @@
 看门狗
 
-这里涉及到的寄存器，请查询7688手册1.4版本的69页 http://wiki.widora.cn/_media/mt7688_datasheet_v1_4.pdf 。
+这里涉及到的寄存器，请查询7688手册1.4版本的69页 http://wiki.widora.cn/media/mt7688datasheetv14.pdf 。
 
 查看datasheet可得寄存器相关数据：
 寄存器 10000120 为Watch Dog控制寄存器。		

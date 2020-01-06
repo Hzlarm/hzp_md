@@ -4,9 +4,10 @@
 
 第一个要配置的是你个人的用户名称和电子邮件地址。这两条配置很重要，每次 Git 提交时都会引用这两条信息，说明是谁提交了更新，所以会随更新内容一起被永久纳入历史记录
 
-```
+```shell
 $ git config --global user.name "xxx"
 $ git config --global user.email "xxx@.com"
+$ git config --global core.editor vim
 ```
 
 配置完成之后会在$HOME目录下生成一个.gitconfig配置文件。
@@ -27,7 +28,7 @@ ssh-add ~/.ssh/id_rsa_github
 * pwd：          显示当前目录的路径。
 * git init          把当前的目录变成可以管理的git仓库，生成隐藏.git文件。    
 * git add XX       把xx文件添加到暂存区去。
-* git commit –m “XX”  提交文件 –m 后面的是注释。 再次修改后加上-a跳过git add步骤。加--amend 修正上一次提交  
+* git commit –m “XX”  提交文件 –m 后面的是注释。 再次修改后加上-a跳过git add步骤。加--amend  添加到上次提交过程中 
 * git status        查看仓库状态
 * git diff  XX      查看XX文件修改了那些内容 
 * git rm XX          删除XX文件 如果已经add到缓存区域的话加-r删除
@@ -41,7 +42,8 @@ ssh-add ~/.ssh/id_rsa_github
 * git reset  --hard HEAD^ 或者 git reset  --hard HEAD~ 回退到上一个版本
   ​                     (如果想回退到100个版本，使用git reset –hard HEAD~100 )
 * git 强行pull并覆盖本地文件  `git fetch --all;  git reset --hard origin/master ;git pull`
-* git log          可以查看提交历史，以便确定要回退到哪个版本.
+* git log          可以查看提交历史，以便确定要回退到哪个版本.  
+* git log -3 --stat 查看最近3次提交更新所更改的文件及内容
 * git reflog       查看历史记录的版本号id,	以便确定要回到未来的哪个版本
 
 ****
@@ -69,6 +71,9 @@ ssh-add ~/.ssh/id_rsa_github
 * git stash pop 恢复文件的同时 也删除stash内容
 * git remote 查看远程库的信息
 * git remote –v 查看远程库的详细信息
+* git rebase -i HEAD~2 合并之前两次commit为一次，将第二个pick改为squash
+
+
 
 设置dev和origin/dev的链接：
 $ git branch --set-upstream dev origin/dev
