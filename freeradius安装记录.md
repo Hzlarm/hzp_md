@@ -82,8 +82,6 @@ steve   Cleartext-Password := "testing"
 
 在另一个终端：`radtest testing localhost 1812 testing123`
 
-
-
 #### 其他配置方案测试：
 
 ```bash
@@ -97,6 +95,7 @@ steve   Cleartext-Password := "testing"
 ##如果是联网测试，往下找类似字段进行修改，指定的外网ip以及设定一个密码。
 ##这个密码是配置fitap时的密码，同样要输入的是radius服务器的ip与端口。这ip不清楚地话可以随意设置，
 ##等开启freeradius -X以及配置好fitap指向radius，服务器端会报错忽略某某ip，然后填入这个ip即可。
+##设置为0.0.0.0/0任何ip都可以
 client private-network-1 {
        ipaddr          = 113.87.99.12/24
        secret          = testing123
@@ -108,6 +107,7 @@ pap
 eap
 chap
 mschap
+# 其中 authorize 字段下 filter_username 代表验证身份与密码
  
 ```
 
@@ -158,7 +158,7 @@ network={
 ```shell
 cd /usr/local/src/
 wget https://w1.fi/releases/wpa_supplicant-2.9.tar.gz
-tar –xzvf wpa_supplicant-2.9.tar.gz
+tar -xzvf wpa_supplicant-2.9.tar.gz
 cd wpa_supplicant-2.9/wpa_supplicant/
 cp defconfig .config
 make eapol_test

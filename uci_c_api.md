@@ -44,12 +44,6 @@ int uci_load(struct uci_context *ctx, const char *name, struct uci_package **pac
 
 
 
-
-
-
-
-
-
 ```c
 #include "uci.h"
 

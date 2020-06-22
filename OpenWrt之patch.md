@@ -1,8 +1,8 @@
 OpenWrt使用的是quilt工具来制作补丁非传统的diff
 
-[diff和quilt使用方法参考博客]( https://blog.csdn.net/hzlarm/article/details/103179953 )
+[diff和quilt使用方法参考博客](https://blog.csdn.net/hzlarm/article/details/103179953)
 
-[官方quilt文档]( https://openwrt.org/docs/guide-developer/build-system/use-patches-with-buildsystem )
+[官方quilt文档](https://openwrt.org/docs/guide-developer/build-system/use-patches-with-buildsystem)
 
 
 准备工作
