@@ -49,7 +49,7 @@ ssh-add ~/.ssh/id_rsa_github
 ****
 
 * git remote add origin url 关联一个远程库   add改为remove取消关联
-* git push [remote-name] [branch-name] (第一次要用-u 以后不需要) origin master 把当前master分支推送到远程库。`git push origin newxx:xx`提交本地的newxx分支到远程的xx分支。 删除远程分支xx： `git push origin :heads/xx` or `git push origin :xx`
+* git push [remote-name] [branch-name] (第一次要用-u 以后不需要) 如：git push  -u origin hzlarm 把当前hzlarm 分支推送到远程库。`git push origin newxx:xx`提交本地的newxx分支到远程的xx分支。 删除远程分支xx： `git push origin :heads/xx` or `git push origin :xx`
 * git clone  url  从远程库中克隆
 
 ********

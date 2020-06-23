@@ -90,6 +90,16 @@ git flow release finish v1.0
 
 
 
+git flow init 
+
+git flow release start v1.0
+
+git flow release finish v1.0
+
+git push origin --tags
+
+
+
 ## 1.5 Hotfix
 
 - 当发现master分支出现一个紧急需要修复的bug，可以使用hotfix分支，hotfix分支是基于maser分支下的。当完成bug修复后，将其merge到master分支上。
@@ -156,6 +166,7 @@ Git Flow流程开发流程：以发布为中心
     以上的这些分支中：一般使用项目的用户可能使用master分支或者release发布分支，开发者用户一般使用到feature、hotfix、develop分支
     这些分支中，master、develop分支最重要。发者还需要记住当前所处的分支以及各个分支的状态、创建、合并分支等操作。
     
+
     鉴于以上手动操作的复杂性：建议使用辅助工具git-flow，帮助管理,减少操作出错
 
 git-flow流程：
