@@ -1,0 +1,572 @@
+1.增加login应用程序
+Base system —>
+<*> busybox ……
+[*] Customize busybox option
+Login/Password Management Utilities —>
+[*] login (NEW)
+
+2.控制台设置
+# pwd
+===> minewtech888
+===> ^)u*Hgm)xI]eRiLwrJO-*)V2VmkWuyqT
+^)u*Hgm)xI]eRiLwrJO-*)V2VmkWuyqT
+root:$1$lur0wfg2$kPBAWs8d5q/xh/aAN6ih0.:17471:0:99999:7:::
+
+无密码：
+root:$1$60deZMU1$KPlabEc4k1z8bxJ3yEZsh/:18204:0:99999:7:::
+3.查看设置过后的密码
+root@Thingoo:/# cat /etc/shadow
+root:$1$yf5LDvK1$r13xq1su8q4GZ5iFQxTI20:17453:0:99999:7:::
+daemon:*:0:0:99999:7:::
+ftp:*:0:0:99999:7:::
+network:*:0:0:99999:7:::
+nobody:*:0:0:99999:7:::
+原始的密码如下：
+lyx@ubuntu:~/openwrt/openwrt_thingoo_g1-test$ cat package/base-files/files/etc/shadow 
+root:$1$DCczDk0y$95oJHvZo7UR5U5Xee/nCQ.:17033:0:99999:7:::
+daemon:*:0:0:99999:7:::
+ftp:*:0:0:99999:7:::
+network:*:0:0:99999:7:::
+nobody:*:0:0:99999:7:::
+
+
+==========================HERE/Manetos AB/common=============================
+xT!!z6LR^SKA5&sL
+root@Thingoo:~# cat /etc/shadow
+root:$1$bFGmISCv$DZFvIeA.h8zvfKo21iQsk.:17645:0:99999:7:::
+daemon:*:0:0:99999:7:::
+ftp:*:0:0:99999:7:::
+network:*:0:0:99999:7:::
+nobody:*:0:0:99999:7:::
+
+=======================kangtaitong==========================
+kttm!!ghL&sL31
+root:$1$dv7BIz5L$gDPCzQXQWXuM4Tkyhh/Dh.:17717:0:99999:7:::
+
+====================nicezhuanye==========================
+nicezhuanye
+root:$1$BJaa7i6n$ParVzyKjMEZwla0jRyeGF.:17745:0:99999:7:::
+
+
+4.修改启动脚本
+4.1 vi package/base-files/files/etc/inittab
+4.2 vi target/linux/ramips/base-files/etc/inittab 有效
+vim /etc/inittab
+::askconsole:/bin/ash -–login
+改为
+::askconsole:/bin/login
+
+
+关于telnet的密码
+
+修改 ：vi package/base-files/files/bin/login.sh
+成：exec /bin/login
+
+关于ssh的密码
+
+进入openwrt系统源码的顶层目录，然后执行 make menuconfig命令
+进入 Network--> SSH-->  <*>openssh-sftp-server
+
+开通防火墙：
+# uci add firewall rule
+# uci set firewall.@rule[-1].src=wan
+# uci set firewall.@rule[-1].target=ACCEPT
+# uci set firewall.@rule[-1].proto=tcp
+# uci set firewall.@rule[-1].dest_port=22
+# uci commit firewall
+# /etc/init.d/firewall restart
+
+
+###########关闭串口控制台###################################
+vi package/base-files/files/etc/config/system 
+config system
+    option 'conloglevel' '1'
+    option 'kconloglevel' '1'
+	option hostname	Thingoo
+	option timezone	UTC
+
+config timeserver ntp
+	list server	0.openwrt.pool.ntp.org
+	list server	1.openwrt.pool.ntp.org
+	list server	2.openwrt.pool.ntp.org
+	list server	3.openwrt.pool.ntp.org
+	option enabled 1
+	option enable_server 0
+
+
+vi target/linux/ramips/base-files/etc/inittab
+注释掉
+#::askconsole:/bin/login
+
+关闭内核打印
+make kernel_menuconfig
+Kernel hacking  --->
+	Early printk
+
+vi target/linux/ramips/mt7688/config-3.18
+or
+make kernel_menuconfig
+CONFIG_CMDLINE="rootfstype=squashfs,jffs2 loglevel=2"
+
+##################################################################
+
+
+telnet设置密码：
+
+vi package/base-files/files/bin/login.sh
+exec /bin/login
+
+
+
+
+
+bootcmd=tftp
+baudrate=57600
+ethaddr="00:AA:BB:CC:DD:10"
+stdin=serial
+stdout=serial
+stderr=serial
+filesize=440004
+fileaddr=80A00000
+ipaddr=10.10.10.2
+serverip=10.10.10.3
+autostart=no
+bootfile=test
+key=thingoo
+bootdelay=1
+
+fw_setenv bootcmd tftp
+fw_setenv baudrate 57600
+fw_setenv ethaddr \"00:AA:BB:CC:DD:10\"
+fw_setenv stdin serial
+fw_setenv stdout serial
+fw_setenv stderr serial
+fw_setenv filesize 440004
+fw_setenv fileaddr 80A00000
+fw_setenv ipaddr 10.10.10.2
+fw_setenv serverip 10.10.10.3
+fw_setenv autostart no
+fw_setenv bootfile test
+fw_setenv bootdelay 1
+
+
+
+
+
+http://www.miui.com/thread-4133822-1-1.html
+xiaomi3 --> 45e0db9f
+
+cd /tmp && rm -rf *.sh && cd /tmp && rm -rf *.sh && wget ftp://joerv.gicp.net/miwifi/miwifi.sh && chmod +x miwifi.sh && sh ./miwifi.sh && rm -rf *.sh
+
+cd /userdisk && rm -rf miwifi.sh && wget http://7xo6sw.com1.z0.glb.clouddn.com/miwifi.sh && chmod +x miwifi.sh && sh ./miwifi.sh
+
+cd /tmp && rm -rf *.sh && curl https://raw.githubusercontent.com/blademainer/miwifi-ss/master/miwifi.sh -o miwifi.sh && chmod +x miwifi.sh && sh ./miwifi.sh && rm -rf *.sh
+
+
+curl -s -k https://www.misstar.com/download/$(uname -m)/mtinstall -o /tmp/mtinstall && chmod +x /tmp/mtinstall && /tmp/mtinstall
+
+用户名：admin
+密  码：admin
+工具箱：http://192.168.0.143:1314 /1024
+工具箱：https://mt.misstar.com
+
+	
+/etc/misstar/scripts/uninstall.sh
+
+
+	
+/etc/misstar/wwwroot/misstar -reset username password
+
+
+- 新功能：
+1. 将内核从v3.18升级到了v4.14；
+2. 增加了对802.1x企业AP连接的支持；
+3. 在MQTT协议中增加了对socks5代理设置的支持；
+4. Json长格式的时间戳精确到毫秒级；
+5. 增加了对不可到达网络的led方案选择的支持。
+- 错误修复：
+1. 文本更正（将路由器重命名为以太网，将中继器重命名为无线等）；
+2. 请记住，在网关的网页上从v2.x.x升级到v3.x.x时，请不要保存当前版本配置。由于WiFi驱动程序已更改，版本差异过大，与之前的配置不再兼容。如果保存了配置，也可以在升级后恢复出厂设置。
+
+
+
+
+
+开启内核打印
+*************************************//k可以不用开启
+make kernel_menuconfig
+Kernel hacking  --->
+	Early printk
+or vi target/linux/ramips/mt7628/config-3.18 +45
+	-# CONFIG_EARLY_PRINTK is not set
+	+CONFIG_EARLY_PRINTK=y
+	
+vi target/linux/ramips/mt7628/config-3.18 +22
+
+- CONFIG_CMDLINE="rootfstype=squashfs,jffs2 loglevel=2"
++ CONFIG_CMDLINE="rootfstype=squashfs,jffs2 loglevel=8"
+*********************************************************
+
+vi libbase/liblog.h +63
+- //#define MI_LOG
++ #define MI_LOG
+
+
+make menuconfig
+-->base system
+<*>	-->dropbear
+
+
+
+
+小项目练习
+
+默认网页登录密码从默认的空修改为thingoo
+	thingoo-base-xxm_hzp/files/etc/httpd.conf +1
+		- /cgi-bin/:admin:
+		+ /cgi-bin/:admin:thingoo
+	thingoo-base-xxm_hzp/files/etc/config/pubmsg +7
+		- option   webPW             ''
+		+ option   webPW             'thingoo'
+
+AP SSID的从默认的GW-{12个MAC地址的大写字母}，修改为 thingoo-{只取12位MAC地址的后面一半，也就是6个MAC地址大写字母}
+	mt7628WIFI-xxm_hzp\files\mt7628.sh +69
+		- option ssid        GW-$(cat /sys/class/net/eth0/address|awk -F ":" '{print $1""$2""$3""$4""$5""$6}'| tr a-z A-Z)
+		+ option ssid        thingoo-$(cat /sys/class/net/eth0/address|awk -F ":" '{print $4""$5""$6}'| tr a-z A-Z)
+
+AP Password从默认为空，修改为beacon888
+	mt7628WIFI-xxm_hzp\files\mt7628.sh +30
+			- password=
+			  encryption=0
+			+ password=beacon888
+			  encryption=4
+
+Service页：
+Upload Interval:3	
+	pubmsg/src/ctx.c +312 
+		- 1000
+		+ 3000
+Client ID:gw-mac 	
+	pubmsg/src/ctx.c +1276
+		+ snprintf(buffer, sizeof(buffer), "gw-%s", mainCtx->gatewayMac);
+		- protoCtx->mqttCtx.opts.clientID = strdup(mainCtx->gatewayMac);
+        + protoCtx->mqttCtx.opts.clientID = strdup(buffer);
+				
+
+Qos:1	
+	pubmsg/src/ctx.c +1221
+		- 0
+		+ 1
+
+Keep alive interval:20	
+	pubmsg/src/ctx.c +47
+		- #define DEFAULT_keepalive_interger 10
+		  #define DEFAULT_keepalive_string "10"
+		+ #define DEFAULT_keepalive_interger 20
+		  #define DEFAULT_keepalive_string "20"
+	
+status Publish Topic:/thingo/mac/status
+	pubmsg/src/ctx.c +50
+		- #define DEFAULT_publishTopic "/gw/%s/status"
+		+ #define DEFAULT_publishTopic "/thingo/%s/status"
+Action Control Topic:/thingo/mac/action
+	pubmsg/src/ctx.c +51
+		- #define DEFAULT_subscribeTopic "/gw/%s/action"
+		+ #define DEFAULT_subscribeTopic "/thingo/%s/action"
+Action Control Response Topic:/thingo/mac/response
+	pubmsg/src/ctx.c +52
+		- #define DEFAULT_responseTopic "/gw/%s/action/response"
+		+ #define DEFAULT_responseTopic "/thingo/%s/action/response"
+
+BLE Data Format:Binary Long
+	pubmsg/src/ctx.c +559
+	Json改为Binary
+	0改1	1改0
+
+灯设置：
+Disable leds permanently?: NO
+	Nothing to do
+	
+Enable leds long brightly?: YES
+	pubmsg/src/ctx.c +415
+		NO改YES
+		0改1	1改0
+		
+时间：
+Timezone：UTC-8
+	vi package/base-files/files/etc/config/system +3
+		option timezone UTC-8
+Ntp Server List：ntp.aliyun.com
+	vi package/base-files/files/etc/config/system +6
+		- list server	0.openwrt.pool.ntp.org ...1、2、3
+		+ list server	'ntp1.aliyun.com'	...2、3、4
+        
+
+自动管理：
+Watch Dog Timeout(start 65s)
+	pubmsg/src/ctx.c +63
+		- #define DEFAULT_watchdog_timeout_integer 60 ...string "60"
+		+ #define DEFAULT_watchdog_timeout_integer 65 ...string "65"
+
+
+Timing Reboot：Sun、Mon、Wed、Thur、Sat、 02:10
+	pubmsg/src/ctx.c +527
+		- if (isauto && strcasecmp(isauto, "default") && strcasecmp(isauto, "YES")) {
+		+ if (!(isauto && strcasecmp(isauto, "default") && strcasecmp(isauto, "YES"))) {
+	thingoo-base-xxm_hzp/files/etc/pubmsg +10
+	 +	option	 istiming          'YES'
+		option   min               '10'
+		option   hour              '02'
+		option   week              '0,1,3,4,6'
+		注：thingoo-base/files/etc/init.d/thingoo_cron中调用了real_cron，real_cron会从pubmsg的配置文件中查找是否定时重启。
+
+
+修改控制台密码为thingoo，并且用户可以通过telnet或者ssh协议用 用户名为root，密码为thingoo直接登陆网关。
+修改控制台密码，并且使能telnet 和 ssh
+增加login应用程序
+   Base system —>
+   <*> busybox ……
+   [*] Customize busybox option
+		Login/Password Management Utilities —>
+		[*] login (NEW)
+ssh
+make menuconfig
+-->base system
+<*>	-->dropbear
+
+在/package/base-files/shadow目录下copy一个文件命名为shadow-xxm_hzp,修改第一行为
+vi package/base-files/files/etc/shadow # 设置openwrt的密码
+#复杂的，无法破解的
+#root:$1$lur0wfg2$kPBAWs8d5q/xh/aAN6ih0.:17471:0:99999:7:::
+#无密码
+#root:$1$60deZMU1$KPlabEc4k1z8bxJ3yEZsh/:18204:0:99999:7:::
+#thingoo
+root:$1$WTUZNx5k$OcKm44yNCqiy1P8uH8kB1.:18264:0:99999:7:::
+
+默认已修改
+修改启动脚本
+vi target/linux/ramips/base-files/etc/inittab
+  ::askconsole:/bin/ash -–login
+  改为
+  ::askconsole:/bin/login
+设置telnet修改 ：vi package/base-files/files/bin/login.sh 成：exec /bin/login
+
+
+
+
+以自己的名字作为固件的firmware model，比如g1-c-{名字}/g1-b-{名字}
+
+修改测试完成之后并且发布版本号为{名字}-v2.1.1的固件，将固件发布到公网，并且可以通过OTA升级固件
+
+
+
+
+********************g1-b与g1-c的区别********************
+
+pubmsg-xxm_hzp:
+E:/openwrt/gateway_openwrt_15.05_package_g1-b-hzp/pubmsg-xxm_hzp/Makefile
+E:/openwrt/gateway_openwrt_15.05_package_g1-b-hzp/pubmsg-xxm_hzp/README.md
+E:/openwrt/gateway_openwrt_15.05_package_g1-b-hzp/pubmsg-xxm_hzp/src/pcbledriver.h
+E:/openwrt/gateway_openwrt_15.05_package_g1-b-hzp/pubmsg-xxm_hzp/src/Makefile
+E:/openwrt/gateway_openwrt_15.05_package_g1-b-hzp/pubmsg-xxm_hzp/files/usr/bin/autopubmsg
+
+thingoo-base-xxm_hzp:
+E:/openwrt/gateway_openwrt_15.05_package_g1-b-hzp/thingoo-base-xxm_hzp/files/etc/init.d/ble
+E:/openwrt/gateway_openwrt_15.05_package_g1-b-hzp/thingoo-base-xxm_hzp/files/etc/config/pubmsg
+
+mt7628WIFI-xxm_hzp: no	
+
+
+共同点
+package/base-files/files/etc/shadow
+
+package/base-files/shadow/shadow-xxm_hzp 
+hell/xxm_hzp.sh
+vi package/base-files/files/etc/config/system
+
+
+修改/etc/config/wireless
+/package/kernel/mac80211/files/lib/wifi/mac80211.sh
+
+
+********************   git   ********************
+g1-c  git
+#add *-xxm_hzp 
+mt7628WIFI-xxm_hzp/
+pubmsg-xxm_hzp/
+thingoo-base-xxm_hzp/
+
+#add shadow
+shell/xxm_hzp.sh : cp package/base-files/shadow/shadow-xxm_hzp  package/base-files/files/etc/shadow
+
+#update system for ntp and timezone
+vi package/base-files/files/etc/config/system
+
+cfg/g1-c-hzlarm-v2.1.0-config
+
+
+g1-b  git
+#add *-xxm_hzp ,shadow and update system for ntp and timezone
+
+mt7628WIFI-xxm_hzp/
+pubmsg-xxm_hzp/
+thingoo-base-xxm_hzp/
+
+shell/xxm_hzp.sh : cp package/base-files/shadow/shadow-xxm_hzp  package/base-files/files/etc/shadow
+
+vi package/base-files/files/etc/config/system
+
+cfg/g1-b-hzlarm-v2.1.0-config
+
+
+
+
+第一次编译wifi驱动需要的库较多。
+vi package/thingoo/pc-ble-driver-v5/Makefile
+vi package/thingoo/pc-ble-driver/Makefile
+修改完后需要重新make menuconfig同步.config文件
+
+
+	
+19.07
+
+Encryption：
+	NO Encryption
+		
+	WEP Open System
+		Used Key Slot:Key#1	Key#2 Key#3 Key#4
+		
+	WEP Shared Key
+		Used Key Slot:Key#1	Key#2 Key#3 Key#4
+		
+	WPA-PSK
+		auto 、Force CCMP(AES)、Force TKIP 、Force TKIP and CCMP : Key
+	
+	WPA2-PSK
+		auto 、Force CCMP(AES)、Force TKIP 、Force TKIP and CCMP : Key
+	
+	WPA-PSK/WPA2-PSK Mixed Mode
+		auto 、Force CCMP(AES)、Force TKIP 、Force TKIP and CCMP : Key
+	
+	WPA-EAP
+		Cipher:auto 、Force CCMP(AES)、Force TKIP 、Force TKIP and CCMP
+		EAP Method:
+			TLS、 就是常规的ssl之前的方式，需要上传三个证书：ca.crt  client.crt  client.key以及密码、身份
+			TTLS、 上传一个证书ca.crt  Authentication：PAP、CHAP、MSCHAP、MSCHAPV2、EAP-GTC、EAP-MD5、EAP-MSCHAPV2、EAP-TLS  身份和密码
+			PEAP、 上传一个证书ca.crt  Authentication：EAP-GTC、EAP-MD5、EAP-MSCHAPV2、EAP-TLS  身份和密码
+			FAST、 上传一个证书ca.crt  Authentication：EAP-GTC、EAP-MD5、EAP-MSCHAPV2、EAP-TLS  身份和密码
+	
+	WPA2-EAP	
+		Cipher:auto 、Force CCMP(AES)、Force TKIP 、Force TKIP and CCMP
+		EAP Method:
+			TLS、 就是常规的ssl之前的方式，需要上传三个证书：ca.crt  client.crt  client.key以及密码、身份
+			TTLS、 上传一个证书ca.crt  Authentication：PAP、CHAP、MSCHAP、EAP-TLS、EAP-GTC、EAP-MD5、EAP-MSCHAPV2、EAP-TLS  身份和密码
+			PEAP、 上传一个证书ca.crt  Authentication：EAP-GTC、EAP-MD5、EAP-MSCHAPV2、EAP-TLS  身份和密码
+			FAST、 上传一个证书ca.crt  Authentication：EAP-GTC、EAP-MD5、EAP-MSCHAPV2、EAP-TLS  身份和密码
+	
+	
+	
+	
+EAP:
+TLS
+TTLS	
+PEAP	
+FAST	
+	
+	pap
+	chap
+	mschap
+	
+	
+	
+	
+PEAP:EAP-GTC、EAP-MD5、EAP-MSCHAPV2通过；EAP-TLS 失败
+TTLS:EAP-GTC、EAP-MD5、EAP-MSCHAPV2、PAP、CHAP、MSCHAP通过；EAP-TLS、EAP-TLS失败
+	
+	
+	
+
+
+
+关于thingoo-webui-g1-c-lemon
+
+修改了5个脚本
+checkparam
+setparam
+loadfile
+loaddefault
+httpfile
+	
+index 80 	+ 
+$scope.openSuccessModal();
+
+
+
+
+main.html 
+
+576-693
+MQTT -> AZURE
+
+
+controller.js 
+956		$scope.protos = ["MQTT", "HTTP", "TCP"];
+957		$scope.serviceStatus.proto = "MQTT";
+
+2728行 setparam
+1076行
+
+
+http.js  
+135行 checkparam
+
+
+protocol 'MQTT_Protocol' 
+
+keepalive '10'                                           
+          
+deviceId 'lemon'                                        
+deviceKey 
+                                   
+iotHubName 'thingoo'                                    	
+iotHubSuffix 'azure-devices.net'  
+
+deviceSasToken 'NULL'                       	
+protocolGatewayHostName 'NULL'	
+connectionString 'NULL'        	
+	
+raw_data	
+ibeacon AFF4C000215
+ACC 16_ _A103
+S1  16_ _A101
+URL 16AAFE10	
+	
+	
+	
+个人	
+	hzlarm@hotmail.com
+	mima:ms
+	
+公司
+Azure：https://azure.microsoft.com/zh-cn/
+AWS：https://aws.amazon.com/cn/pricing/?nc1=h_ls
+
+账号：auth@minewtech.com
+密码：Chuang5496
+
+
+233 241 245
+
+
+208 227 234
+
+
+
+
+
+
+
+
+
+
+
