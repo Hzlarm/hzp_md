@@ -144,6 +144,31 @@ fetch常结合merge一起用，git fetch + git merge == git pull
 
 
 
+**git clone 含有子模块得项目**
+
+ `git clone --recursive https://github.com/example/example.git `
+
+or
+
+> 1  初始化本地子模块配置文件 
+>
+>  git submodule init 
+>
+> 2 更新项目，抓取子模块内容 
+>
+>  git submodule update 
+
+
+
+git建立一个新的空分支
+```shell
+git checkout  --orphan study
+git rm -rf .
+git add study.md
+git commit -m "第一次记录"
+```
+
+
 git bash 不显示中文 
 
  `git config --global core.quotepath false `  基本可以解决
