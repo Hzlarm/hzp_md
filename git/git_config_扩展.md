@@ -625,3 +625,19 @@ rm -rf repo.git
 `git submodule update --init --recursive`
 
 即可将子模块内容下载下来后工程才不会缺少相应的文件。
+
+
+
+push代码报错：error: RPC failed; curl 18 OpenSSL SSL_read: Connection was reset
+
+ 出现这种问题可能是文件太大了 
+
+curl的postBuffer的默认值较小,需要在终端调整为到合适的大小,这里调整到500M
+
+输入以下命令：
+
+> git config --global http.postBuffer 524288000
+
+这样已经配置好了，如果你不确定，可以根据以下命令查看postBuffer。
+
+git config --list
