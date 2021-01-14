@@ -39,7 +39,7 @@ EOF
 
 `quilt edit gdb/remote.c  `
 
-```pach
+```diff
 --- a/gdb/remote.c
 +++ b/gdb/remote.c
 @@ -6110,8 +6110,19 @@ process_g_packet (struct regcache *regca
@@ -89,6 +89,66 @@ EOF
 
 
 cat ./scripts/remote-gdb
+
+### 示例二：内核打补丁
+```shell
+make target/linux/{clean,prepare} V=s QUILT=1
+
+cd build_dir/target-mipsel_24kc_musl/linux-ramips_mt76x8/linux-4.14.149/
+
+quilt push -a
+
+#quilt new platform/666-reboot-softreset-2-hardreset-by-GPIO5.patch
+quilt new platform/555-reboot-crash-add-m25p_shutdown-to-m25p80.patch
+
+
+quilt edit drivers/mtd/devices/m25p80.c
+#quilt edit kernel/reboot.c
+#quilt edit 其他文件
+
+quilt diff
+
+quilt refresh
+
+make target/linux/update V=s  
+```
+
+```diff
+--- a/drivers/mtd/devices/m25p80.c
++++ b/drivers/mtd/devices/m25p80.c
+@@ -313,6 +313,21 @@ static int m25p_remove(struct spi_device
+        return mtd_device_unregister(&flash->spi_nor.mtd);
+ }
+ 
++static void m25p_shutdown(struct spi_device *spi)
++{
++        struct m25p        *flash = spi_get_drvdata(spi);
++
++        if ((&flash->spi_nor)->addr_width > 3) {
++                printk(KERN_INFO "m25p80: exit 4-byte address mode\n");
++                flash->command[0] = SPINOR_OP_EX4B;  // exit 4-byte address mode: 0xe9
++                spi_write(flash->spi, flash->command, 1);
++                flash->command[0] = 0x66;  // enable reset
++                spi_write(flash->spi, flash->command, 1);
++                flash->command[0] = 0x99;  // reset
++                spi_write(flash->spi, flash->command, 1);
++        }
++}
++
+ /*
+  * Do NOT add to this array without reading the following:
+  *
+@@ -387,6 +402,7 @@ static struct spi_driver m25p80_driver =
+        .id_table       = m25p_ids,
+        .probe  = m25p_probe,
+        .remove = m25p_remove,
++    .shutdown = m25p_shutdown,
+ 
+        /* REVISIT: many of these chips have deep power-down modes, which
+         * should clearly be entered on suspend() to minimize power use.
+```
+
+
 
 
 

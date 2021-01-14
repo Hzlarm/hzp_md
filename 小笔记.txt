@@ -1,0 +1,601 @@
+
+
+echo a bb ccc | wc -*
+-l统计行:1	-c统计字节数:9	-m统计字符数:9	-w统计字数:3	-L打印最长行长度:8
+
+
+scp  hzlarm@192.168.0.251:/home/hzlarm/aa .
+
+python3 -m http.server 8888
+
+linux 命令echo 参数-n表示不换行-e表示开启转义   转义字符\c代表后面的不再输出
+
+find . -type f -exec grep -inrH "udelay" {} \; 2>/dev/null
+
+shell 	${}取变量无歧义可以不加{}
+		$()执行命令
+		$(()) $[]算数代换
+		''单引号保持字符串字面值
+		""双引号防止通配符扩展，但允许变量扩展
+		
+		
+git log -3 --stat 查看最近3次提交更新所更改的文件及内容	
+
+
+
+Linux 2>&1 >&- 这种的含义
+是IO重定向 关闭标准输入和错误输出
+
+
+>&n 使用系统调用 dup (2) 复制文件描述符 n 并把结果用作标准输出；
+<&n 标准输入复制自文件描述符 n；
+<&- 关闭标准输入（键盘）；
+>&- 关闭标准输出；
+n<&- 表示将 n 号输入关闭；
+n>&- 表示将 n 号输出关闭；
+
+exec 1>outfilename  # 打开文件outfilename作为stdout。
+exec 2>errfilename  # 打开文件errfilename作为 stderr。
+exec 0<&- # 关闭 标准输入。
+exec 1>&- # 关闭 标准输出。
+exec 2>&- # 关闭 错误输出。
+
+
+文件表达式
+-e filename 如果 filename存在，则为真
+-d filename 如果 filename为目录，则为真 
+-f filename 如果 filename为常规文件，则为真
+-L filename 如果 filename为符号链接，则为真
+-r filename 如果 filename可读，则为真 
+-w filename 如果 filename可写，则为真 
+-x filename 如果 filename可执行，则为真
+-s filename 如果文件长度不为0，则为真
+-h filename 如果文件是软链接，则为真
+filename1 -nt filename2 如果 filename1比 filename2新，则为真。
+filename1 -ot filename2 如果 filename1比 filename2旧，则为真。
+
+
+[ -d DIR ] 如果DIR存在并且是一个目录则为真
+[ -f FILE ] 如果FILE存在且是一个普通文件则为真
+[ -z STRING ] 如果STRING的长度为零则为真
+[ -n STRING ] 如果STRING的长度非零则为真
+[ STRING1 = STRING2 ] 如果两个字符串相同则为真
+[ STRING1 != STRING2 ] 如果字符串不相同则为真
+[ ARG1 OP ARG2 ] ARG1和ARG2应该是整数或者取值为整数的变量，OP是-eq（等于）-ne（不等于）-lt（小于）-le（小于等于）-gt（大于）-ge（大于等于）之中的一个
+和C语言类似，测试条件之间还可以做与、或、非逻辑运算：
+
+[ ! EXPR ] EXPR可以是上表中的任意一种测试条件，!表示逻辑反
+[ EXPR1 -a EXPR2 ] EXPR1和EXPR2可以是上表中的任意一种测试条件，-a表示逻辑与
+[ EXPR1 -o EXPR2 ] EXPR1和EXPR2可以是上表中的任意一种测试条件，-o表示逻辑或
+
+&& 返回值0成功则执行
+|| 返回值非0失败则执行
+
+
+url出现了有+，空格，/，?，%，#，&，=等特殊符号的时候，可能在服务器端无法获得正确的参数值，如何是好？
+解决办法
+将这些字符转化成服务器可以识别的字符，对应关系如下：
+URL字符转义
+
+用其它字符替代吧，或用全角的。
+
++    URL 中+号表示空格                          %2B
+空格 URL中的空格可以用+号或者编码                %20
+/   分隔目录和子目录                            %2F
+?    分隔实际的URL和参数                        %3F
+%    指定特殊字符                               %25
+#    表示书签                                   %23
+&    URL 中指定的参数间的分隔符                  %26
+=    URL 中指定参数的值                          %3D
+
+
+while read line
+do
+    echo $line
+done < test.txt
+
+
+
+固件的系统默认文件位置在这里
+./package/base-files/files/ 对应openwrt的根目录
+包含bin  etc  lib  rom  sbin
+
+
+
+初始密码在这里配置
+./package/base-files/files/etc/shadow
+
+#root:$1$DCczDk0y$95oJHvZo7UR5U5Xee/nCQ.:17033:0:99999:7:::
+root:$1$60deZMU1$KPlabEc4k1z8bxJ3yEZsh/:18204:0:99999:7:::
+
+
+
+./package/base-files/files/etc/banner  为console登录欢迎横幅，http://www.network-science.de/ascii/ 可以生成。openwrt风格默认rectangles ,我们选的是standard
+
+
+
+在terminal中经常会弹出:random: nonblocking pool is initialized, 打断输入输出,特别烦人,经过查阅发现如下:
+
+Log Levels: KERN_NOTICE 5 通知消息
+
+去除掉可以通过设置console_loglevel.
+
+设置方法:
+查看/proc/sys/kernel/printk:
+
+cat /proc/sys/kernel/printk
+7 4 1 7
+
+修改console_loglevel
+
+echo "4 4 1 7" > /proc/sys/kernel/printk
+解释:
+第一个数字代表当前终端log输出的级别,设置为4, 那么比4小的级别就不能输出(数值上比4大)
+
+
+
+
+
+不能在SecureCRT中make menuconfig（显示为乱码）
+options--terminal--emulation-- xterm  ansi color
+1、先设置终端为xterm模式，并选中ANSI颜色：
+2、置字符编码为无
+3、可以做make menuconfig了
+
+
+
+
+$0 相当于C语言main函数的argv[0]
+$1、$2… 这些称为位置参数（Positional Parameter），相当于C语言main函数的argv[1]、argv[2]…
+$# 相当于C语言main函数的argc ，注意这里的#后面不表示注释
+$@ 表示参数列表"$1" “$2” …，例如可以用在for循环中的in后面。
+$* 表示参数列表"$1" “$2” …，同上
+$? 上一条命令的Exit Status
+$$ 当前进程号
+
+##var.sh 1 2 3
+echo '$#' $#
+echo '$0' $0
+echo '$1' $1
+echo '$2' $2
+echo '$#' $#
+echo '$@' $@2
+echo '$*' $*
+echo '$$' $$
+echo '$?' $?
+
+$# 3
+$0 ./var.sh
+$1 1
+$2 2
+$# 3
+$@ 1 2 3
+$* 1 2 3
+$$ 20957
+$? 0
+
+
+
+
+vi 中打开后只读
+:%! sudo tee % > /dev/null
+
+
+<a id=01></a>
+<a href="#01">回到顶部</a>
+
+openwrt编译器位置
+/home/hzlarm/openwrt/gateway_openwrt_19.07_g1/staging_dir/toolchain-mipsel_24kc_gcc-7.4.0_musl/bin/mipsel-openwrt-linux-musl-gcc
+pc上使用ldd查看动态链接库
+交叉程序
+readelf -a simplesample_mqtt | grep "Shared" 或者
+/home/hzlarm/openwrt/gateway_openwrt_19.07_g1/staging_dir/toolchain-mipsel_24kc_gcc-7.4.0_musl/bin/mipsel-openwrt-linux-musl-readelf -a simplesample_mqtt | grep "Shared"
+
+在命令模式下，对Nginx的基本操作命令有：
+
+启动服务：C:\nginx-1.14.2>start nginx.exe
+如果改变配置文件，则可重新加载配置：C:\nginx-1.14.2>nginx.exe -s reload
+停止服务：C:\nginx-1.14.2>nginx.exe -s stop
+
+
+/sbin/ldconfig –v更新一下配置即可。
+	
+	apt list --installed
+
+
+
+
+/home/hzlarm/openwrt/gateway_openwrt_19.07_g1/bin/targets/ramips/mt76x8/packages
+
+
+%s#abc#123#g (如文件内有#,可用/替换,:%s/abc/123/g)
+
+
+
+**********************************************
+******				关于azure			******
+**********************************************
+/home/hzlarm/openwrt/gateway_openwrt_19.07_g1/build_dir/target-mipsel_24kc_musl/azure-iot-sdk-c/iothub_client/samples
+/home/hzlarm/openwrt/gateway_openwrt_19.07_g1/package/azure-iot-sdk-c/src/iothub_client/samples
+
+
+make V=s package/azure-iot-sdk-c/compile
+
+tftp -g -r hzp_pc-ble-v5.ipk  192.168.5.251
+
+iot hub
+
+az login
+az account list
+
+在 Azure Cloud Shell 中运行以下命令, 安装用于 Azure CLI 的 Microsoft Azure IoT 扩展:
+az extension add --name azure-cli-iot-ext
+az iot hub device-identity create --hub-name g1-c --device-id device00
+az iot hub device-identity show-connection-string --hub-name g1-c --device-id device00 --output table
+
+
+./home/hzlarm/azure/azure-iot-sdk-c/linux_sdk/iothub_client/samples/iothub_convenience_sample
+从中心读取遥测数据
+
+az iot hub monitor-events --hub-name  g1-c --output table
+az iot hub monitor-events --hub-name g1-c --device-id device00
+
+失败则 pip install uamqp
+python pip-20.0.2-py2.py3-none-any.whl/pip install pip-20.0.2-py2.py3-none-any.whl
+pip install uamqp -i https://pypi.tuna.tsinghua.edu.cn/simple/
+
+
+
+code
+
+#define DEFAULT_keepalive_interger 10
+#define DEFAULT_keepalive_string "10"
+
+#define DEFAULT_protocol  "MQTT_Protocol"
+#define DEFAULT_deviceId  "lemon"
+#define DEFAULT_deviceKey  "bhE1M3CdxYclRJ1UYvU2p0pmTd4d1RlbDH3y1d6AwVg="
+#define DEFAULT_iotHubName  "thingoo"
+#define DEFAULT_iotHubSuffix  "azure-devices.net"
+#define DEFAULT_protocolGatewayHostName  "thingoo"
+//SharedAccessSignature sr=g1-c.azure-devices.net%2Fdevices%2Fdevice00&sig=TrEmNJRsaFn4wikhnXx48ob%2FXY1xMn8gBCOTmNyxi70%3D&se=1585020562
+#define DEFAULT_deviceSasToken  "NULL"
+#define DEFAULT_connectionString ""
+//"HostName=thingoo.azure-devices.net;DeviceId=lemon;SharedAccessKey=LuiDJmtHXaZiQQ4HleI41EWdTaZL732NtUK1RNe2UEg="
+
+pubmsg与dpumsg文件加入
+config   azure_mqtt   'azure_mqtt'
+    option   keepalive               'default'
+    option   protocol                'default'
+    option   deviceId                'default'
+    option   deviceKey               'default'
+    option   deviceSasToken          'default'
+    option   iotHubName              'default'
+    option   iotHubSuffix            'default'
+    option   protocolGatewayHostName 'default'
+    option   connectionString        'default'
+    option   urlpath                 'default'
+    option   certfile                'default'
+    option   keyfile                 'default'
+    option   isStrConfig             'default'
+    option   isEnableSsl             'default'
+
+
+
+
+用原来的mosquitto将azure——iothub当做mqtt服务器，通过mqtt助手获取信息示例
+参考链接 http://192.168.5.5/gateway_gitbook_faq/g1-c/server/server-2.html
+
+web--------------
+g1-c.azure-devices.net:8883
+
+Username
+g1-c.azure-devices.net/ac233fc0211b
+Password
+VS Code
+
+Status Publish Topic
+devices/ac233fc0211b/messages/events/
+Action Control Topic
+devices/ac233fc0211b/messages/devicebound
+Action Control Response Topic
+/gw/ac233fc0211b/action/response
+
+Mqttfx---------------
+
+Address
+g1-c.azure-devices.net
+
+Port
+8883
+clientid
+ac233fc0211b (deviceid)
+
+
+
+
+参考链接
+https://docs.microsoft.com/zh-cn/azure/iot-hub/quickstart-send-telemetry-c
+
+Azure Cloud Shell 监视模拟设备发送的设备消息
+
+在 Azure Cloud Shell 中运行以下命令，以创建设备标识。
+az iot hub device-identity create --hub-name {YourIoTHubName} --device-id MyCDevice
+在 Azure Cloud Shell 中运行以下命令，以获取刚注册设备的_设备连接字符串_
+az iot hub device-identity show-connection-string --hub-name {YourIoTHubName} --device-id MyCDevice --output table
+
+
+或者通过 Visual Studio
+
+
+
+
+
+/etc/init.d/thingoo_watchdog stop && /etc/init.d/pubmsg  stop
+
+************************************
+*  直接方法  device_method action： *
+************************************
+getversion			{"Response":"get version result is \n {\"currentVersion\":\"v3.0.0\",\"versions\":[\"v1.4.0\",\"v1.4.1\",\"v1.4.2\",\"v1.4.3\",\"v1.4.4\",\"v1.4.5\",\"v1.4.6\",\"v2.0.0\",\"v2.0.1\",\"v2.1.0\",\"v2.1.1\",\"v3.0.0\"]}"}
+heartBeat			{"Response":"action is heartBeat!"}
+report				{"Response":"SendReportedState..........succed!!"}
+restart				{"Response":"action is Restart, Restart in 3s!"}
+reboot				{"Response":"action is Reboot, Reboot in 3s!"}
+upgrade
+其中upgrade需要参数
+{"type":"self", "urlpath": "http://192.168.5.55/firmware/", "filename":"g1-c-lemon-v1.0.0.bin", "isSave":"YES"}
+or
+{"type":"public", "isSave":"YES", "version":"v1.4.0"}
+
+{"Response":"Gateway has downloaded the firmware. Please wait about 2 minutes to check the firmware version of the gateway."}
+
+************************************
+*          添加公钥私钥             *
+************************************
+./certGen.sh create_root_and_intermediate
+#转到Azure IoT中心并导航到证书。添加新证书，在出现提示时提供根CA文件./certs/azure-iot-test-only.root.ca.cert.pem
+
+#点击生成验证码 并复制 如：844C4C8F08240C2FCBF7E66D724B3F6B3384212DA83B1853
+
+./certGen.sh create_verification_certificate 844C4C8F08240C2FCBF7E66D724B3F6B3384212DA83B1853
+
+#上传./certs/verification-code.cert.pem 验证成功
+
+#创建新的设备选择第三个 X.509 CA Signed   命名为 device_509
+
+#创建新的设备证书。
+./certGen.sh create_device_certificate device_509
+
+#为其生成公钥
+cd ./certs && cat new-device.cert.pem azure-iot-test-only.intermediate.cert.pem azure-iot-test-only.root.ca.cert.pem > new-device-full-chain.cert.pem
+#私钥为
+ ./private/new-device.key.pem
+ #连接设备时上传这new-device-full-chain.cert.pem与new-device.key.pem
+
+************************************
+*          设备孪生配置             *
+************************************
+{"desired":{"common":{"isUploadS1":"NO","isUploadGateway":"NO","isUploadIBeacon":"NO","isUploadUnkown":"NO"},"azure_mqtt":{"deviceId":"lemon"},"$version":64},"reported":{"common":{"version":"v3.0.0","downloadBase":"http://iot.beaconyun.com/download/thingoo/","product":"g1/","tag":"g1-c/","wifiState":"up","isActive":"YES","scanInterval":"100","scanWindow":"100","disableLED":"NO","isLongBright":"NO","scheme":"0","brightness":"25","displayTime":"0","isFilterDupData":"NO","timeout":"60","isauto":"YES","isLongFormat":"Long","isOnlySpecialMac":"NO","macList":"NULL","isUploadGateway":"NO","isUploadS1":"NO","isUploadUnkown":"NO","timeoutRestart":"4","proto":"MQTT","reverted":"NO","networkMode":"router","isJsonFormat":"Json","isWebuiConnected":"NO","isUploadIBeacon":"NO","uploadInterval":"20000","isFirstRun":"YES","rawReg":"NULL","macReg":"NULL","regex":"NULL"},"azre_mqtt":{"keepalive":"10","protocol":"MQTT_Protocol","deviceId":"lemon","deviceKey":"bhE1M3CdxYclRJ1UYvU2p0pmTd4d1RlbDH3y1d6AwVg="}
+
+
+只写配置的即可，不需要配置的把后面的value置为null保存即可删除
+
+例如： 
+"desired": {
+  "common": {
+"isLongBright":"YES",
+    "uploadInterval": "60000",
+    "macReg": null
+    "schedule": {
+      "istiming": "YES",
+      "min": "30",
+      "hour": "2",
+      "week": "1,2"
+    },
+  }
+  "azure_mqtt": {
+    "deviceId": "ac233fc0211b_x509",
+    "certfile": "client.crt",
+    "keyfile": "client.key"，
+    "urlpath": "http://192.168.5.111/ssl/"
+  },
+......
+}
+配置完成后，及时置为null，否则每次启动服务都会被设置。
+"desired": {
+   "common": null,
+   "azure_mqtt": null,
+......
+}
+
+除了macReg被删除，其他的都会写入配置中。
+配置前可以使用直接方法的report动作查看当前配置。结果会更新在孪生设备的reported字段中。
+
+
+个人	
+	hzlarm@hotmail.com
+	mima:ms
+	
+公司
+Azure：https://azure.microsoft.com/zh-cn/
+AWS：https://aws.amazon.com/cn/pricing/?nc1=h_ls
+
+账号：auth@minewtech.com
+密码：Chuang5496
+
+
+Azure Iot hub的主题格式是固定的，不支持创建自定义主题。
+
+数据发布：devices/{deivceid}/messages/events/
+
+消息订阅：devices/{deviceid}/messages/devicebound/#
+
+方法订阅：iothub/methods/POST/#
+	
+公司的
+
+HostName=thingoo-lemon.azure-devices.net;DeviceId=ac233fc0211b;SharedAccessKey=k42nl+BFuMruQom+US0If4qW8VLP4erXcXnYLKZtkPg=
+
+HostName=thingoo-lemon.azure-devices.net;DeviceId=ac233fc0211b_x509;x509=true
+
+HostName=thingoo-lemon.azure-devices.net;DeviceId=ac233f001111_x509;x509=true
+
+
+        "isEnableSsl": "NO",
+        "isStrConfig": "YES"
+		report  位置错误
+		修复	
+
+
+云服务器和VPS的区别就是，VPS是在一台服务器上利用虚拟化技术实现的，云服务器是在服务器集群的
+资源池利用虚拟化实现的。用户的角度肯定是用云服务器更好一点。扩展性和安全性上当然是云服务器更优
+
+
+
+
+
+g1-c-lemon bug:
+
+keepalive输入字母问题：
+修改controler.js + 1421
+else if(!regKeepalive.test($scope.serviceStatus.keepalive) && $scope.serviceStatus.proto == 'AZURE'){
+				$scope.message = "Keepalive must be a positive integer!";
+				$scope.openMsgModal();
+			}
+
+report 定时显示失败问题：
+修改action.c +939
+    if (istiming && !strcmp(istiming, "YES")) {
+
+report azure_mqtt名字不对：
+修改action.c +1067
+ MI_json_object_set_new(rsp_jobj, "azure_mqtt", azure_jobj);
+ 
+ 
+ 
+ 修改网关的hostname
+ sed -i s#Thingoo#Iottag# package/base-files/files/bin/config_generate
+ 
+
+
+专利相关笔记
+在原来的wifi设置的基础上 新增加 几个文件
+
+
+profilecheck
+
+多个配置文件
+
+
+一种网关WiFi故障转移的方法
+
+
+ESL
+
+gateway-sniffer-v2.0.0.exe
+
+seting  录入mac地址
+
+选择尺寸 执行  全部确定 
+设置mqtt 连接  订阅 
+右击 选中的网关 open ble model  control
+新窗口选择操作颜色 执行
+
+
+sed -i "s#'Thingoo'#Iottag-\$\(cat \/sys\/class\/net\/eth0\/address\|awk -F \":\" '{print \$1\"\"\$2\"\"\$3\"\"\$4\"\"\$5\"\"\$6}'\| tr A-Z a-z\)#g" package/base-files/files/bin/config_generate
+sed -i "s#Iottag.*#'Thingoo'#g" package/base-files/files/bin/config_generate
+
+
+make  package/utils/busybox/{clean,compile} V=s
+
+
+
+ps | grep "/usr/bin/pubmsg" |grep -v "grep" | awk '{print $1}'|xargs kill -9
+
+pgrep "/usr/bin/pubmsg" | xargs kill -9
+
+
+target/linux/ramips/dts/THINGOO-G1
+
+
+find . -maxdepth 3 -type f -name config -exec sed -i s#git@192.168.0.248:3022#git@git.minew.com:2022# {} \;
+
+
+
+curl cip.cc
+
+
+一、查看NAT机器外网IP地址
+
+root@Nat:/# curl cip.cc
+IP      : 115.238.*。*
+地址    : 中国  浙江  杭州
+运营商  : 电信
+二、安装GOST中转
+
+vi /etc/hosts
+将下面两行加到最后保存。
+140.82.114.4 github.com
+199.232.68.133 raw.githubusercontent.com
+
+三、运行gost中转一键脚本
+
+bash <(curl -s https://raw.githubusercontent.com/mixool/script/debian-9/gost.sh) -L=tcp://:1234/VPS:443
+上面1234是你的Nat机器的端口，vps:443是你落地机器IP和端口。
+
+四、你自己的客户端设置
+
+重要一点，是客户地址填NAT机器外网IP，端口要填Nat外网映射的端口（如本文案例就是1234）。
+
+
+
+freeradius 
+
+"Yancy Lin"     Cleartext-Password := "hello"
+
+
+secret          = thingoo123
+
+
+:w !sudo tee %
+
+
+curl -fsSL https://raw.githubusercontent.com/phlinhng/v2ray-tcp-tls-web/vless/src/v2gun.sh -o ~/v2gun.sh && bash ~/v2gun.sh
+
+
+bash <(curl -Lso- https://git.io/superspeed)
+
+
+
+客户问网关为什么不能扫描手机的蓝牙？如果可以的话，客户希望用网关来追踪持有手机的人。
+
+客户的smart phone是否有开发APP，让手机处于广播ibeacon数据？ 如果没有，那就无法扫描到，就算smart phone开启蓝牙，
+它也只是走经典蓝牙协议，而不是BLE协议。手机蓝牙默认都是走经典蓝牙协议的，只有开发了APP，调用BLE API让手机处于广播状态，
+网关才可以获取到手机的beacon信息。客户可以用nrf connect这个APP的advertise 模拟beacon 广播，看网关是否可以搜索到。
+
+
+iBeacon是苹果公司于2013年9月发布的一种基于低功耗蓝牙的通信协议，通信协议名称：iBeacon。其工作方式是，
+配备有iBeacon协议的低功耗蓝牙设备向周围发送自己特有的ID，接收到该ID的应用软件会根据该ID采取一些行动。
+因此ibeacon需要和拥有低功耗蓝牙的设备进行交互，他们的交互通过APP来实现。
+
+secure crt日志加时间
+[%Y-%M-%D  %h:%m:%s.%t]
+
+还原源码到初始状态
+git clean -xdf
+
+
+
+notepad:
+删除包含drop字符的行
+Ctrl + F查找，选择替换，替换栏空着，查找目标栏输入如下
+^.*drop.*$
+
+删除包含drop字符的行，并去除该空格行
+Ctrl + F查找，选择替换，替换栏空着，查找目标栏输入如下
+^.*drop.*\r?\n
+
+删除不包含 nodrop 字符的行
+^(?!.*nodrop.*)$
+删除不包含 nodrop 字符的行，并去除该空格行
+^(?!.*nodrop).*\r?\n
+

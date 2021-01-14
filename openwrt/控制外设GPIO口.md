@@ -1,5 +1,4 @@
-[GPIO基础]( https://blog.csdn.net/hzlarm/article/details/103120139 
-)
+[GPIO基础](https://blog.csdn.net/hzlarm/article/details/103120139)
 
 在Linux中使用GPIO例子
 导出一个引脚的操作步骤

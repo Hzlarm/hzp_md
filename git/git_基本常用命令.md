@@ -43,7 +43,7 @@ ssh-add ~/.ssh/id_rsa_github
   ​                     (如果想回退到100个版本，使用git reset –hard HEAD~100 )
 * git 强行pull并覆盖本地文件  `git fetch --all;  git reset --hard origin/master ;git pull`
 * git log          可以查看提交历史，以便确定要回退到哪个版本.  
-* git log -3 --stat 查看最近3次提交更新所更改的文件及内容
+* git log -3 --stat 查看最近3次提交更新所更改的文件。看具体修改内容：`git  show  commit-hashid  filename`    filename 不写则代表查看所有。
 * git reflog       查看历史记录的版本号id,	以便确定要回到未来的哪个版本
 
 ****
@@ -137,6 +137,35 @@ commit那就不会有任何问题。如果衍合那些已经公开的 commit，�
 
 
 
+git打标签：
+
+```bash
+#列出tag标签 -l 增加过滤
+git tag
+git tag -l "v1.0.*"
+#新建tag  -a表示带备注-m备注内容
+git tag v1.0
+git tag -a tagName -m "a tag"
+#显示tag详细信息
+git show tagName
+#对某次commit 增加tag
+git tag -a v1.0 9fceb02 -m "a tag"
+
+#推送某个tag到远程
+git push origin v1.0
+#推送所有tag到远程
+git push origin --tags
+
+#删除本地tag
+git tag -d v1.0
+#删除远程tag
+git push origin :refs/tags/v0.1.2
+```
+
+
+
+
+
 git fetch从远程分支拉取代码。
 
 fetch常结合merge一起用，git fetch + git merge == git pull
@@ -218,3 +247,9 @@ Git仓库维护：
    　　git merge update-project/master
 
 5. 一般在创建特性分支时，一定要确保在最新源码的基础上创建，故先将仓库更新到最新源码状态。
+
+
+
+
+
+[![Anurag's github stats](https://github-readme-stats.vercel.app/api?username=Hzlarm)](https://github.com/anuraghazra/github-readme-stats)

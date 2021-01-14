@@ -8,13 +8,24 @@ Login/Password Management Utilities —>
 2.控制台设置
 # pwd
 ===> minewtech888
-===> ^)u*Hgm)xI]eRiLwrJO-*)V2VmkWuyqT
-^)u*Hgm)xI]eRiLwrJO-*)V2VmkWuyqT
-root:$1$lur0wfg2$kPBAWs8d5q/xh/aAN6ih0.:17471:0:99999:7:::
 
-无密码：
+
+Thingoo标准固件
+密： root:$1$Sevciuy0$CRuXyRAOWeathkwz1T00I1:18210:0:99999:7:::
+码： ^)u*Hgm)xI]eRiLwrJO-*)V2VmkWuyqT
+
+无密码：很多种
 root:$1$60deZMU1$KPlabEc4k1z8bxJ3yEZsh/:18204:0:99999:7:::
+
+root:$1$.g7AOl6S$xxObDOse7ZNmHvi/ZBnxf/:18493:0:99999:7:::
+
+Iottag固件
+密： root:$1$ee7T5Ug4$YNr/JzwT1nPV5EOCv6eCp1:18331:0:99999:7:::
+码： xT!!z6LR^SKA5&sL
+
+
 3.查看设置过后的密码
+
 root@Thingoo:/# cat /etc/shadow
 root:$1$yf5LDvK1$r13xq1su8q4GZ5iFQxTI20:17453:0:99999:7:::
 daemon:*:0:0:99999:7:::
@@ -23,7 +34,9 @@ network:*:0:0:99999:7:::
 nobody:*:0:0:99999:7:::
 原始的密码如下：
 lyx@ubuntu:~/openwrt/openwrt_thingoo_g1-test$ cat package/base-files/files/etc/shadow 
-root:$1$DCczDk0y$95oJHvZo7UR5U5Xee/nCQ.:17033:0:99999:7:::
+root:$1$DCczDk0y$95oJHvZo7UR5U5Xee/nCQ.:17033:0:99999:7:
+
+::
 daemon:*:0:0:99999:7:::
 ftp:*:0:0:99999:7:::
 network:*:0:0:99999:7:::
@@ -353,6 +366,7 @@ vi target/linux/ramips/base-files/etc/inittab
 
 
 助手有密码的。
+^)u*Hgm)xI]eRiLwrJO-*)V2VmkWuyqT
 root:$1$Sevciuy0$CRuXyRAOWeathkwz1T00I1:18210:0:99999:7:::
 
 
@@ -537,14 +551,7 @@ deviceSasToken 'NULL'
 protocolGatewayHostName 'NULL'	
 connectionString 'NULL'        	
 	
-raw_data	
-ibeacon AFF4C000215
-ACC 16_ _A103
-S1  16_ _A101
-URL 16AAFE10	
-	
-	
-	
+
 个人	
 	hzlarm@hotmail.com
 	mima:ms
@@ -562,11 +569,15 @@ AWS：https://aws.amazon.com/cn/pricing/?nc1=h_ls
 
 208 227 234
 
+Azure Iot hub的主题格式是固定的，不支持创建自定义主题。
 
- 
- 
- 
- 
- 
+数据发布：devices/{deivceid}/messages/events/
+
+消息订阅：devices/{deviceid}/messages/devicebound/#
+
+方法订阅：iothub/methods/POST/#
+
+
+
 
 

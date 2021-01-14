@@ -641,6 +641,10 @@ S19firewall：
  S20network：
 根据 UCI 配置文件/etc/config/network，使用守护进程/sbin/netifd 来配置网络。
 
+S95done：
+
+调用mount_root，set leds to normal state ，以及调用rc.local。
+
 #### 最后总结
 
 uboot -----> start_kernel -----> rest_init -----> kernel_init ----->  /etc/preinit  -----> /sbin/init   -----> （/sbin/procd      ----->   /etc/inittab   ----->   /etc/rc.d/S* -----> /sbin/procd作为pid为1的守护进程）&&  （ /etc/preinit  ----->  /lib/preinit/*  ----->结束）

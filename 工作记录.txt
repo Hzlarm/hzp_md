@@ -1,0 +1,956 @@
+
+/usr/sbin/redsocks2 -c /etc/redsocks2/redsocks2.conf
+
+
+base {
+log_debug = off;
+log_info = off;
+log = "file:/tmp/redsocks2.log";
+daemon = on;
+redirector = iptables;
+}
+redsocks {
+        local_ip = 0.0.0.0;
+        local_port = 12345;
+        ip = 192.168.5.88;
+//      port = 10808;
+//      type = socks5;
+        port = 10809;
+//      type = http-relay;
+        type = http-connect;
+        autoproxy = 0;
+login = "proxyuser";
+password = "123456";
+}
+tcpdns {
+        local_ip = 0.0.0.0;
+        local_port = 1053;
+        tcpdns1 = 8.8.4.4;
+        tcpdns1_port = 53;
+        tcpdns2 = 8.8.8.8;
+        tcpdns2_port = 53;
+        timeout = 4;
+}
+
+redsocks {
+        local_ip = 0.0.0.0;
+        local_port = 12345;
+        ip = 192.168.5.88;
+        port = 10809;
+//      type = http-relay;
+        type = http-connect;
+        autoproxy = 0;
+}
+
+
+redsocks {
+        local_ip = 0.0.0.0;
+        local_port = 12345;
+        ip = 106.53.21.193;
+        port = 8888;
+        type = http-connect;
+        autoproxy = 0;
+}
+
+首先要看TCP/IP协议，涉及到四层：链路层，网络层，传输层，应用层。 　　
+
+其中以太网（Ethernet）的数据帧在链路层 　　
+IP包在网络层 　　
+TCP或UDP包在传输层 　　
+TCP或UDP中的数据（Data)在应用层 　　
+它们的关系是 数据帧｛IP包｛TCP或UDP包｛Data｝｝｝ 　　
+---------------------------------------------------------------------------------
+在应用程序中我们用到的Data的长度最大是多少，直接取决于底层的限制。 　　
+我们从下到上分析一下： 　　
+1.在链路层，由以太网的物理特性决定了数据帧的长度为（46＋18）－（1500＋18），其中的18是数据帧的头和尾，也就是说数据帧的内容最大为1500（不包括帧头和帧尾），即MTU（Maximum Transmission Unit）为1500； 　
+2.在网络层，因为IP包的首部要占用20字节，所以这的MTU为1500－20＝1480；　
+3.在传输层，对于UDP包的首部要占用8字节，所以这的MTU为1480－8＝1472； 　　
+所以，在应用层，你的Data最大长度为1472。 （当我们的UDP包中的数据多于MTU(1472)时，发送方的IP层需要分片fragmentation进行传输，而在接收方IP层则需要进行数据报重组，由于UDP是不可靠的传输协议，如果分片丢失导致重组失败，将导致UDP数据包被丢弃）。 　　
+从上面的分析来看，在普通的局域网环境下，UDP的数据最大为1472字节最好（避免分片重组）。 　　
+但在网络编程中，Internet中的路由器可能有设置成不同的值（小于默认值），Internet上的标准MTU值为576，所以Internet的UDP编程时数据长度最好在576－20－8＝548字节以内。
+
+
+MTU对我们的UDP编程很重要，那如何查看路由的MTU值呢？ 　　
+对于windows OS: ping -f -l 　　如：ping -f -l 1472 192.168.0.1 　　
+如果提示：Packets needs to be fragmented but DF set. 　　则表明MTU小于1500，不断改小data_length值，可以最终测算出gateway的MTU值； 　　
+对于linux OS: ping -c -M do -s 　　如： ping -c 1 -M do -s 1472 192.168.0.1 　　
+如果提示 Frag needed and DF set…… 　　则表明MTU小于1500，可以再测以推算gateway的MTU。
+
+
+IP数据包的最大长度是64K字节(65535)，因为在IP包头中用2个字节描述报文长度，2个字节所能表达的最大数字就是65535。  
+   
+由于IP协议提供为上层协议分割和重组报文的功能，因此传输层协议的数据包长度原则上来说没有限制。实际上限制还是有的，因为IP包的标识字段终究不可能无限长，按照IPv4，好像上限应该是4G(64K*64K)。依靠这种机制，TCP包头中就没有“包长度”字段，而完全依靠IP层去处理分帧。这就是为什么TCP常常被称作一种“流协议”的原因，开发者在使用TCP服务的时候，不必去关心数据包的大小，只需讲SOCKET看作一条数据流的入口，往里面放数据就是了，TCP协议本身会进行拥塞/流量控制。  
+   
+UDP则与TCP不同，UDP包头内有总长度字段，同样为两个字节，因此UDP数据包的总长度被限制为65535，这样恰好可以放进一个IP包内，使得UDP/IP协议栈的实现非常简单和高效。65535再减去UDP头本身所占据的8个字节，UDP服务中的最大有效载荷长度仅为65527。这个值也就是你在调用getsockopt()时指定SO_MAX_MSG_SIZE所得到返回值，任何使用SOCK_DGRAM属性的socket，一次send的数据都不能超过这个值，否则必然得到一个错误。  
+   
+那么，IP包提交给下层协议时将会得到怎样的处理呢？这就取决于数据链路层协议了，一般的数据链路层协议都会负责将IP包分割成更小的帧，然后在目的端重组它。在EtherNet上，数据链路帧的大小如以上几位大侠所言。而如果是IP   over   ATM，则IP包将被切分成一个一个的ATM   Cell，大小为53字节。
+
+
+
+
+之所以出现这样的问题是因为网关本身一个mac地址，wifi一个mac地址。我们的产品出厂都是采用了一个mac。当使用wifi连接时。网关的wifi底层驱动为了确保mac唯一，会更改一个bit。所以会出现这种情况。
+
+
+130015314
+
+
+thingoo-sdk-tutorial-20191104.rar\thingoo-sdk-tutorial\pc-ble-driver\readme.txt
+ thingoo-webui_19.07_g1-d-orange 跟 gateway_openwrt_19.07_package_g1-d-orange 都是新
+
+***********************************
+orange
+
+thingoo-webui_19.07_g1-d-orange
+
+```
+git flow init -d
+git flow release start 'v3.0.0'
+git add .
+git commit -m 'feat: webui for thingoo-g1-d-orange-v3.0.0'
+
+git flow release finish 'v3.0.0'
+git remote add origin ssh://git@git.minew.com:2022/gateway/developer/thingoo-webui_19.07_g1-d-orange.git
+git push -u origin master
+git push origin develop
+git push --tags
+```
+
+gateway_openwrt_19.07_package_g1-d-orange
+```
+git flow init -d
+git flow release start 'v3.0.0'
+git add .
+git commit -m 'feat: packages for thingoo-g1-d-orange-v3.0.0'
+git flow release finish 'v3.0.0'
+git remote add origin ssh://git@git.minew.com:2022/gateway/developer/gateway_openwrt_19.07_package_g1-d-orange.git
+git push -u origin master
+git push origin develop
+git push --tags
+```
+
+```
+git stash 
+git flow release start 'v3.0.1'
+git stash pop
+git add .
+git commit -m 'feat: packages for thingoo-g1-d-orange-v3.0.1
+Fix check script of the factory.'
+git flow release finish 'v3.0.1'
+git push --set-upstream origin develop
+git push
+git push origin master
+git push origin v3.0.1
+```
+
+-------------------------------------------------
+gateway_openwrt_upgrade    orange3 iottag2.1
+
+
+
+
+还需要更改 2.1.0
+thingoo-webui_19.07_g1-c-iottag				thingoo-webui-g1-c-iottag.md
+gateway_openwrt_19.07_package_g1-c-iottag   ChangeLog.md
+
+
+git commit -m 'feat: 发布g1-c-iottag-v2.1.0'
+
+
+git flow release start g1-d-orange-v3.0.1
+
+
+
+等待客户反馈提交代码到仓库
+/***************   g1-c-iottag-v2.1.1   *******************/
+win：
+thingoo-webui_19.07_g1-c-iottag
+gateway_openwrt_19.07_package_g1-c-iottag 
+
+251：
+gateway_openwrt_19.07_g1 ：g1-c-iottag-v2.1.1
+
+/***************   g1-c-v3.2.0    *******************/
+thingoo-webui_19.07_g1-c 
+gateway_openwrt_19.07_package_g1-c   ChangeLog.md 以及待测试
+
+
+ curl cip.cc
+
+/**************************************************************/
+						tinyproxy
+/**************************************************************/
+config upstream                                      
+        option type proxy                                         
+        option via 192.168.5.88:10809                              
+ #不加则全走代理       option target "192.168.99.0/255.255.255.0" 
+
+在openwrt中脚本新版本添加了type种类之后的bug
+write_upstream() {                            
+        local type                           
+        local via                                 
+        local target                 
+                                        
+        config_get "type" "$1" "type"   
+        config_get via "$1" via                        
+        config_get target "$1" target                             
+        [ -n "$target" ] && target=' "'"$target"'"'    
+                                                       
+#        [ "$type" = "proxy" ] && [ -n "$via" ] && \ 
+#                echo "upstream $via$target"  
+        [ -n "$type"  ] && [ -n "$via" ] && \ 
+                echo "upstream $type $via$target"            
+                                                       
+        [ "$type" = "reject" ] && [ -n "$target" ] && \               
+                echo "no upstream$target"                 
+} 
+
+
+User nobody
+Group nogroup
+Port 8888
+Timeout 600
+DefaultErrorFile "/usr/share/tinyproxy/default.html"
+StatHost "127.0.0.1"
+StatFile "/usr/share/tinyproxy/stats.html"
+LogFile "/var/log/tinyproxy.log"
+Syslog Off
+LogLevel Info
+XTinyproxy Off
+MaxClients 100
+MinSpareServers 5
+MaxSpareServers 20
+StartServers 5
+MaxRequestsPerChild 0
+ViaProxyName "tinyproxy"
+FilterURLs Off
+FilterExtended Off
+FilterCaseSensitive Off
+FilterDefaultDeny No
+ConnectPort 443
+ConnectPort 563
+upstream http 192.168.5.88:10809
+
+export http_proxy=http://192.168.5.88:10809   
+export https_proxy=http://192.168.5.88:10809
+
+/**************************************************************/
+
+
+/**************************************************************/
+squid 配置
+/**************************************************************/
+日志目录：不同系统版本与squid版本可能路径存在差异。
+配置完毕重启未生效别慌，查看日志错哪里了。
+/var/log/squid/cache.log 
+
+acl SSL_ports  port 8883	# mqtt
+acl Safe_ports port 1883	# mqtt
+
+#http_access allow localhost manager
+http_access allow all
+
+
+设置验证
+# 使用帐号密码认证方式使用代理
+sudo apt-get install httpd-tools or 使用在线htpasswd在线生成工具，然后选择Crypt。如：proxyuser:MTyr2pdlzUees 对应密码123456
+htpasswd  -c /etc/squid/passwd proxy_username
+#vi /etc/squid/squid.conf
+auth_param basic program /usr/lib/squid/basic_ncsa_auth /etc/squid/passwd
+# 定义授权组
+acl squid_user proxy_auth REQUIRED
+# 允许授权组
+http_access allow squid_user
+
+配置完成重新启动
+/etc/init.d/squid restart
+/**************************************************************/
+
+
+
+
+
+
+ESL云平台：hzp123456
+192.168.0.254:5080
+192.168.5.237:5080
+
+唤醒时间30s
+2 by 2
+uart.c 1329
+action.c 299 186
+
+
+
+
+uboot
+1010 14->5
+
+
+config.mk
+12
+#BOARD_RESET_MODE = GPIO14_RESET_MODE取消注释
+
+
+
+vi /etc/rc.local
+echo "rc.local  ------------->  run reboot script" > /dev/console
+sh /root/reboot &
+
+
+vi /root/reboot
+echo "sleep30" > /dev/console
+sleep 30
+echo "auto rebooting" > /dev/console
+reg w 0x10000060 0x55154045
+reg w 0x10000600 0x820
+reg w 0x10000640 0x20
+
+
+mv /root/reboot  re
+
+reg r 0x10000060
+寄存器 0x10000060 的第21、20位00代表I2C，01代表GPIO5
+0x55054045   --->   0x55154045   
+寄存器0x10000600控制GPIO31-0的模式是否为输出，设置GPIO5为输出模式(原先GPIO11就是输出模式)
+
+reg r 0x10000640
+
+reg r 0x10000600
+add:0x10000600 = 0x800   GPIO11是LED旋转灯
+
+reg w 0x10000600 0x820	 GPIO5硬复位开关
+
+reg w 0x10000060 0x55154045 
+
+
+
+reboot: Restarting system
+
+
+
+
+vi ./build_dir/toolchain-mipsel_24kc_gcc-7.4.0_musl/linux-4.14.149/kernel/reboot.c
+
+
+ls target/linux/ramips/patches-4.14/
+
+
+make target/linux/{clean,prepare} V=s QUILT=1
+
+cd build_dir/target-mipsel_24kc_musl/linux-ramips_mt76x8/linux-4.14.149/
+
+quilt push -a
+
+quilt new platform/666-reboot-softreset-2-hardreset-by-GPIO5.patch
+
+quilt edit kernel/reboot.c
+quilt edit 其他文件
+
+quilt diff
+
+quilt refresh
+
+make target/linux/update V=s  
+
+
+#include <asm/io.h>
+#include <linux/delay.h>
+
+pr_emerg("Restarting system  softreset2hardreset by GPIO5\n");
+int reg;
+reg = readl(0x10000060);
+reg &=~(1<<21);
+reg |=1<<20;
+writel(reg, 0x10000060);
+
+writel(readl(0x10000600) |= 1<<5, 0x10000600);
+writel(0x20, 0x10000640);
+udelay(100);
+pr_emerg("Restarting system  softreset2hardreset by GPIO5 failed \n");
+
+
+
+
+
+/****************    for g2   ********************/
+
+#define RALINK_REG(x)		(*((volatile u32 *)(x)))
+
+u32 wps_no_pressed = (*((volatile u32 *)(0xb0000624)));
+
+if(!(wps_no_pressed&1<<6))
+
+uboot_all_set_gpio5.bin
+
+thingoo-g1-c-v3.2.1_patch-reboot.bin
+uboot-g2-a-wps-30s_exit_web.bin
+uboot-g2-a_hzlarm_test.bin
+printf( "\n ********** for_cnt is %d ********* wps_pressed_cnt is %d!!\n\n", for_cnt, wps_pr     essed_cnt);
+
+
+
+
+
+
+	寄存器 10000060 的第21、20位00代表I2C，01代表GPIO. GPIO#5与GPIO#4
+	0x55054045   --->   0x55154045
+	reg r 0x10000060
+
+	寄存器 10000600 控制GPIO31-0的模式是否为输出，设置GPIO#5,GPIO#4为输出模式(原先GPIO#11就是输出模式)
+	0x800   --->   0x830
+	reg r 0x10000600
+	uboot中已经设置GPIO#5输出模式，需要手动设置GPIO#4为输出模式
+reg w 0x10000600 0x830
+
+	寄存器 10000620 表示GPIO31-0输入模式时输入的值或者控制输出值。
+	reg r 0x10000620
+
+	寄存器 10000630 控制GPIO31-0 输出置位	WO
+	需要拉高 GPIO#5 使能看门狗然后 GPIO#4 方波喂狗
+reg w 0x10000630 0x20
+
+
+	寄存器 10000640 控制GPIO31-0 输出清零	WO
+reg w 0x10000640 0x10
+
+/*********************/
+开启看门狗并且喂狗
+/*********************/
+vi wdt
+#!/bin/sh
+
+reg w 0x10000630 0x20
+
+while :
+do
+reg w 0x10000640 0x10
+usleep 500000
+reg w 0x10000630 0x10
+done
+
+/*********************/
+关闭看门狗
+/*********************/
+vi diswdt
+#!/bin/sh
+
+reg w 0x10000640 0x20
+ps |grep wdt |grep -v "grep" | awk '{print $1}'| xargs kill -9 2>/dev/null
+/*********************/
+
+	
+uboot lib_mips/board.c	1440
+	/* add by minew*/
+	//set I2C_MODE : I2C_SCLK-->GPIO#4  I2C_SD-->GPIO#5
+	RALINK_REG(RT2880_GPIOMODE_REG)&=~(1<<21); 
+	RALINK_REG(RT2880_GPIOMODE_REG)|=1<<20; 
+	//set GPIO4 GPIO5 output mode
+	RALINK_REG(RT2880_REG_PIODIR)|=1<<4; //output mode
+	RALINK_REG(RT2880_REG_PIODIR)|=1<<5; //output mode
+	printf("************************************\n");
+	printf("pull low GPIO5 to disable stwd100!!!\n");
+	printf("************************************\n");
+	RALINK_REG(RT2880_REG_PIODATA)&=~(1<<5);
+
+
+/*********************/
+开启看门狗并且喂狗	c run_stwd100
+/*********************/
+vi run_stwd100
+#!/bin/sh
+###i2c or gpio?
+REG_I2C_MODE=$(reg r 0x10000060 | awk {'print $3'})
+#echo $REG_I2C_MODE >/dev/console
+let "VAL=$REG_I2C_MODE | 1<<20"
+let "VAL=$VAL & ~(1<<21)"
+HEOP_I2C_MODE=$(printf "0x%x" $VAL) 
+#echo $HEOP_I2C_MODE >/dev/console
+###reg w 0x10000060 $HEOP_I2C_MODE 
+if [ "$REG_I2C_MODE"x = "$HEOP_I2C_MODE"x ]; then
+	#echo "gpio#4&5 is gpio" >/dev/console
+	#gpio4 and gpio5 out mode?
+	REG_GPIO_MODE=$(reg r 0x10000600 | awk {'print $3'})
+	#echo $REG_GPIO_MODE >/dev/console
+	let "VAL=$REG_GPIO_MODE|0x30"
+	HOPE_GPIO_MODE=$(printf "0x%x" $VAL) 
+	#echo $HOPE_GPIO_MODE >/dev/console
+	if [ "$REG_GPIO_MODE"x != "$HOPE_GPIO_MODE"x ]; then
+		#echo "gpio#4&5 is no out mode!!!" >/dev/console
+		reg w 0x10000600 $HOPE_GPIO_MODE
+	#else 
+		#echo "gpio#4&5 is out mode" >/dev/console
+	fi
+	#pull high gpio5 start stwd100_watchdog
+	reg w 0x10000630 0x20
+	while :
+	do
+	#gpio4 sends square wave to feed stwd100_watchdog
+		reg w 0x10000640 0x10
+		usleep 500000
+		reg w 0x10000630 0x10
+		usleep 500000
+	done
+else 
+	echo -e "\033[;33;1m  gpio#4&5 is i2c!!! exited  \033[0m" >/dev/console
+	exit
+fi
+
+/*********************/
+关闭看门狗	
+/*********************/
+vi stop_stwd100
+#!/bin/sh
+stwd100_watchdog_id=$(ps |grep run_stwd100 |grep -v "grep" | awk '{print $1}')
+if [ x$stwd100_watchdog_id != "x" ]; then
+	echo -e "\033[;33;1m   run_stwd100:$stwd100_watchdog_id will killed   \033[0m"  >/dev/console
+	#pull low gpio5 stop stwd100_watchdog
+	reg w 0x10000640 0x20
+	kill -9 $stwd100_watchdog_id 2>/dev/null
+fi
+
+/*********************/
+开机自启看门狗	
+/*********************/
+#vi /etc/rc.local
+run_stwd100 &
+echo -e "\033[;33;1m   run_stwd100 started  \033[0m"  >/dev/console
+
+
+
+uboot-add_stwd.bin
+
+uboot-random-test-stwd.bin
+
+
+ce e6 
+s4 guolv 
+ce wdt
+xie c wdt
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+5第七月
+
+
+
+优化服务频繁切换
+
+断网重连实现稳定，准确对应指示灯显示状态。
+实现Device Twin对网关属性的配置（参数配置）部分。通过直接方法实现getversion、heartBeat、report、restart、reboot、upgrade等action。并调试稳定性。
+azure单次传输上限是256k，平均可以传1200多条beacon数据。在设置上传时间间隔内，为保证数据有效上传，数据量达到1200条beacon数据立即发送，需要合理设置上传时间。
+完善了网页相关的cgi脚本以及配置文件，修改网页，对应的Azure服务参数配置。增加了x509证书验证方式。
+使用公司的azure账号 进行iothub注册，添加设备等操作， 在vscode上面 接收数据等使用直接方法与设备孪生配置的方法，详细写入测试文档。
+优化http与azure切换,偶尔出现异常，使用网页与设备孪生配置定时重启不一致等问题。以及调整report为直接方法手动执行，设备孪生配置后的立即生效改为手动执行restart方法生效等
+
+
+4第六月
+
+
+
+3第五月
+
+注册Azure账户进行测试。Azure umqtt部分编写修改并在网关中运行测试通过，相对于mosquitto没有tls加密部分。所以无法取代mosquitto
+支援生产，测试B6设备在4dbm广播频率下，网关接收信号的距离。
+
+对接Azure Cloud的Azure iothub client部分完成测试用例到网关中。
+将iothub_client_sample_mqtt的api接口对应pubmsg项目。
+支援生产两天
+
+
+将iothub_client_sample_mqtt集成到pubmsg项目中。
+解决pubmsg主程序使用得json库与iot_client底层调用的parson库的冲突问题
+通过VS Coud IDE接收网关发送到IotHub的数据
+
+
+删减掉mosquitto部分，需要与web thingoo网页一致。修改页面选项以及对应的配置脚本
+
+
+
+
+
+
+2第四月（因为疫情只有一周）
+查阅Azure IoT Hub SDK相关文档，学习上手把Azure IoT Hub SDK在x86Linux上成功编译，因为没有账号无法测试。
+根据官方资料对Azure IoT Hub SDK进行交叉编译。
+将Azure IoT Hub SDK作为一个library添加到Openwrt中，编写相关的Makefile。
+
+
+
+1第三月
+
+完成小练习项目的需求，熟悉整个g1-b/g1-c的发布流程
+
+	能独立完成文档提到的需求，熟练掌握编译和发布流程 4
+
+	验收小练习项目的完成情况 1
+
+
+接手openwrt19.07 g1-c的版本项目
+	编译和掌握v3.0.0新特性	3
+
+
+编写g1-b/g1-c v3.0.0规格书
+	基于v2.0.0的规格，更新属于v3.0.0的规格书 年前
+
+
+
+12第二月
+
+熟悉g1-b/c标准程序的管理，编译，发布流程  5
+	知道g1-b/c之间的差异，熟悉编译和发布流程 
+		g1-b ws2812的gpio为18   		g1-c ws2812的gpio为11
+		g1-b 蓝牙驱动gpio为19,v3  		g1-c 蓝牙驱动gpio为19,v5
+		g1-b wifi mt7688 				g1-c wifi mt7628 2T2R	
+
+
+		熟悉g1-b/c标准程序的管理，编译，发布流程
+		了解g1-b/c之间的差异
+
+		掌握openwrt不同项目的切换
+
+		在busybox增加wget，用于空中升级。配置升级时候只保留必要的配置文件
+
+		分析openwrt的启动过程，从start_kernel开始每一步初始化的流程来了解如何配置openwrt相关的启动配置文件如：
+		关闭failsafe故障恢复模式
+		修改启动脚本添加login并设置密码
+
+
+
+
+熟悉g1-b/c各个package的原理（pubmsg/webui-thingoo/thingoo-base/ws2812-draiveris/） 5~10天
+	主要熟悉主程序pubmsg的框架
+	熟悉如何编写简单的Shell脚本
+	规格书上的每个功能点要和代码对应起来
+		熟悉网关相关的主程序以及配置脚本执行顺序以及关系1
+		通过查看串口打印log信息与代码，熟悉pubmsg的框架与业务逻辑，每个功能点与代码的对应关系
+		熟悉uhttpd的配置以及Basic Authentication原理
+		熟悉cgi原理与基本的环境变量 
+		
+熟悉uboot是如何实现灯控制和通过网页救砖的 1  board.c 2019
+	掌握
+		熟悉网关项目中webui-thingoo的cgi脚本
+		熟悉如何编写简单的cgi脚本
+		熟悉uboot是如何实现灯控制和通过网页救砖的
+
+通过ASK平台熟悉网关的各种问题 5~10
+	熟悉
+
+
+
+
+在MTK收购Ralink后，其中的WiFi板块还是那么强劲，把单通道的RT3050F/RT5350F升级到MT7688,把双通道RT3352F升级到MT7620，在优化到MT7628 ，
+目前双通道行业，选用MT7268比较普遍，毕竟比较在乎WiFi的带宽。接下来探讨具体应用：MT7628符合IEEE 802.11 b/g/n 无线标准;
+采用2T2R双通道通信，***传输速率300Mbps；采用MIPS®24KEc™架构；主频580MHz、支持1Wan+4Lan口百兆高速以太网络PHY交换器（具
+体数量可灵活选择）；AES128/256 安全引擎；有USB 2.0、PCIe、SD-XC、I2S/PCM和I/O接口可供选择；EEROM/DDR配置丰富可选。
+实际应用时，多数时候不需要一块完整的PCBA主板，而是喜欢功能化采用模块的方式来集成，这样设计效率高，同时方便更改升级，
+而模块的主要区别是无线性能(通道数量、无线标准)、集成方式(贴片/插件)、接口种类和数量、供电电压、天线连接方式等
+
+
+
+
+11第一月
+第一周
+*****根据规格书熟悉G1-C网关的工作流程，能配置网关的网络，查看网关上传的数据，熟悉各种配置		1
+
+掌握G1-C的AP模式以及在局域网内配置方法，通过mqttfx接收json数据以及发送重启命令。了解Router连接以及Repeater连接的原理。以及数据采集json格式与Binary格式。
+
+
+****了解Openwrt是什么，编译Openwrt系统，熟悉如何编译Openwrt和烧写网关固件		2
+
+了解Openwrt系统，编译G1-C的uboot，固件以及烧写。
+配置修改固件，如添加ttyUSB0设备节点供pc-ble-driver-test ，修改固件root初始化密码为空，修改启动logo。
+
+了解Openwrt的目录结构，8个原始目录以及编译生成的各个目录的作用。
+了解OpenWrt编译扩展机制feeds,了解scripts目录下一些脚本的作用。了解OpenWrt包管理系统OPKG。
+
+vi target/linux/ramips/image/mt76x8.mk  有定义固件的大小,过大会报错
+
+*****熟悉Openwrt的Makefile编译体系，可以基本看懂Openwrt的Makefile结构，能根据现有的Makefile写出自己项目的Makefile  2
+了解openwrt的Makefile基本结构，可以将自己编写的程序编译进固件中或者编译成ipk拷贝到系统中运行
+  
+
+
+第二周
+
+熟悉Openwrt的UCI语法/cron & crontab/HotPlug/
+/etc/config/system   											 熟悉Openwrt的各个细节
+
+/etc/config/network
+/etc/config/wireless 
+网络配置文件									熟悉如何用修改该配置文件来控制wifi
+
+
+
+添加自己的驱动模块到固件中
+
+熟悉UCI语法，配置原理，配置完成需要init.d重新启动，UCI的shell与C的API。
+
+熟悉crontab的定时任务   定时重启可能遇到循环重启问题及解决办法，脚本命令正确但不执行时，环境变量需要重新导入
+            
+熟悉热插拔HotPlug，编译支持USB挂载U盘sd卡时候所需的各个依赖模块的功能，添加自动挂载U盘 sd卡，ntfs格式U盘只读问题的解决办法。
+
+熟悉OpenWrt启动脚本(Init Scripts），添加自定义命令以及开机自启动。
+
+熟悉Openwrt的各个细节，各个脚本的配置如：
+/etc/config/system 系统配置，包含主机名称、网络时间同步等，这里可以添加cronloglevel的值修改crontab的信息等级等等
+
+掌握网络配置文件的修改，控制wifi
+/etc/config/network
+/etc/config/wireless 
+
+
+
+
+外加
+	串口
+		+kmod-usb-serial +kmod-usb-serial-cp210x   	 
+	内核模块根据网络活动、USB来驱动LED 
+		+kmod-ledtrig-usbdev  +kmod-ledtrig-netdev 
+	exfat，扩展FAT，也称作FAT64	  
+		+kmod-fs-exfat 
+	添加本地语言支持：	Latin1是ISO-8859-1的别名ISO-8859-1编码是单字节编码，向下兼容ASCII，其编码范围是0x00-0xFF，0x00-0x7F之间完全和ASCII一致，0x80-0x9F之间是控制字符，0xA0-0xFF之间是文字符号。
+						cp936表示GBK，cp950表示Big5，cp437表示ASCII
+						各国编码标准互不兼容，推出统一标准Unicode，UTF-8：针对Unicode的可变长字符编码（多字节串，第一个字节在C0到FD之间，后面的字节在80到BF之间）
+		+kmod-nls-base +kmod-nls-cp437 +kmod-nls-iso8859-1 +kmod-nls-utf8 \
+		
+	e2fsprogs（也叫做e2fs programs）是一个Ext2（及Ext3/4）文件系统工具集（Ext2 Filesystems Utilities [1]  ），它包含了诸如创建、修复、配置、调试ext2文件系统等的标准工具。	
+		+e2fsprogs 
+	Usbutils是Linux下查看USB设备信息的工具。	
+		+usbutils 
+		
+删除	+kmod-fs-ntfs /干扰不安装 ntfs-3g取代
+
+
+
+/***********暂时没用上
+Native Language Support --->
+<*> kmod-nls-cp437
+<*> kmod-nls-iso8859-1
+
+Kernel modules ->Filesystems -> <*> kmod-fs-msdos
+Kernel modules —> Filesystems —> <*> kmod-fuse  
+
+4). 添加自动挂载工具
+Utilities —> Filesystem —> <*> badblocks
+
+******************/
+
+
+
+
+第三周
+
+如何使用命令来控制外围GPIO   							通过系统GPIO驱动设备接口/sys/class/gpio来操作gpio，如使GPIO45对应的蓝牙驱动开关。
+<https://openwrt.org/docs/techref/hardware/port.gpio>
+
+了解dts文件的作用										了解dts文件的作用，dts相关的语法。修改dts文件中的uart1复用管脚的功能为通用IO口，修改dts配置看门狗。用reg命令操作寄存器来实现，蓝牙驱动的开关以及看门狗的相关操作。
+# dts文件是用于修改底层驱动的配置，如gpio映射，波特率
+# 我司的mt7688/mt7628的dts文件：
+vi target/linux/ramips/dts/Thingoo.dts
+vi target/linux/ramips/dts/mt7628an.dtsi
+														
+				
+
+搭建gdbserver调试环境			搭建gdbserver调试环境，写一段代码通过远程调试。熟悉OpenWrt的patch工具quilt的使用，给gdbserver打补丁。
+<https://openwrt.org/docs/guide-developer/gdb>
+ 写一个有段错误bug的代码，使用gdb定位到bug产生的位置
+														
+														
+第四周 
+
+使用SD卡或者U盘来扩展内存
+https://openwrt.org/docs/guide-user/additional-software/extroot_configuration
+
+MQTT协议的熟悉
+
+BLE的概念/BLE的广播格式理解
+
+
+git flow的发布流程
+
+对本月的内容进行系统性的消化与整理。
+
+
+熟悉OpenWrt的文件系统原理，撤销SD卡与U盘扩展OpenWrt存储的操作
+熟悉MQTT协议
+理解BLE的概念以及理解BLE的广播格式
+
+熟悉git版本控制的原理，分支结构。git秘钥添加配置以及熟练git操作，掌握git flow的发布流程。
+
+查看了解部分历史项目。
+回顾本月所有内容加深熟练度。
+
+
+tftp 与 ubuntu 一样192.168.0.251
+git http://192.168.0.248:3080
+
+AC:23:3F:C0:2F:87
+ac233fc02f87
+/gw/ac233fc02f87/status
+
+
+掌握G1-C的AP模式以及在局域网内配置方法，通过mqttfx接收json数据以及发送命令。了解Router连接以及Repeater连接的原理。以及数据采集json格式与Binary格式。
+
+掌握Openwrt系统，编译G1-C的uboot，固件以及烧写。
+配置修改固件，如添加ttyUSB0设备节点供pc-ble-driver-test ，修改固件root初始化密码为空，修改启动logo。
+
+了解Openwrt的目录结构，8个原始目录以及编译生成的各个目录的作用。
+了解OpenWrt编译扩展机制feeds,了解scripts目录下一些脚本的作用。了解OpenWrt包管理系统OPKG。
+
+了解openwrt的Makefile基本结构，可以将自己编写的程序编译进固件中或者编译成ipk拷贝到系统中运行
+  
+
+
+
+了解openwrt的Makefile基本结构，可以将自己编写的程序编译进固件中或者编译成ipk拷贝到系统中运行
+  
+熟悉UCI语法，配置原理，配置完成需要init.d重新启动，了解UCI的shell与C的API。  
+  
+熟悉热插拔HotPlug，编译支持USB挂载U盘sd卡时候所需的各个依赖模块的功能，添加自动挂载U盘 sd卡，ntfs格式U盘只读问题的解决办法。
+  
+掌握OpenWrt启动脚本(Init Scripts），添加自定义命令以及开机自启动。 
+  
+熟悉Openwrt的各个细节，各个脚本的配置如：
+/etc/config/system 系统配置，包含主机名称、网络时间同步等，这里可以添加cronloglevel的值修改crontab的信息等级等等 
+  
+掌握通过修改网络配置文件来控制wifi
+/etc/config/network
+/etc/config/wireless  
+
+
+  
+  
+通过系统GPIO驱动设备接口/sys/class/gpio来操作gpio，如使GPIO45对应的蓝牙驱动开关。
+  
+了解dts文件的作用，dts相关的语法。修改dts文件中的uart1复用管脚的功能为通用IO口，修改dts配置看门狗。用reg命令操作寄存器来实现蓝牙驱动的开关以及看门狗的相关操作。 
+
+搭建gdbserver调试环境，写一段代码通过远程调试。
+
+熟悉OpenWrt的patch工具quilt的使用，补丁文件的格式，给gdbserver打补丁。
+
+熟悉openwrt的文件系统，使用SD卡或者U盘来扩展系统内存
+
+
+
+熟悉OpenWrt的文件系统原理，撤销SD卡与U盘扩展OpenWrt存储的操作
+
+熟悉MQTT协议 
+理解BLE的概念以及理解BLE的广播格式
+
+熟悉git版本控制的原理，分支结构。git秘钥添加配置以及熟练git操作，掌握git flow的发布流程。了解git内部原理。
+
+回顾本月所有内容加深熟练度。
+
+
+
+熟悉g1-b/c标准程序的管理，编译，发布流程  5
+	知道g1-b/c之间的差异，熟悉编译和发布流程 
+
+
+		熟悉g1-b/c标准程序的管理，编译，发布流程
+		了解g1-b/c之间的差异
+
+		掌握openwrt不同项目的切换；在busybox增加wget，用于空中升级。配置升级时候只保留必要的配置文件；分析openwrt的启动过程，从start_kernel开始每一步初始化的流程来了解如何配置openwrt相关的启动配置文件如：；关闭failsafe故障恢复模式；修改启动脚本添加login并设置控制台密码
+
+
+熟悉g1-b/c各个package的原理（pubmsg/webui-thingoo/thingoo-base/ws2812-draiveris/） 5~10天
+	主要熟悉主程序pubmsg的框架
+	熟悉如何编写简单的Shell脚本
+	规格书上的每个功能点要和代码对应起来
+
+
+熟悉网关相关的主程序以及配置脚本执行顺序以及关系；通过查看串口打印log信息与代码，熟悉pubmsg的框架与业务逻辑，每个功能点与代码的对应关系；熟悉uhttpd的配置以及Basic Authentication原理；熟悉cgi原理与基本的环境变量 
+
+
+熟悉uboot是如何实现灯控制和通过网页救砖的 1
+	掌握
+
+
+逐个熟悉网关项目中webui-thingoo的cgi脚本功能以及与web对应关系；熟悉如何编写简单的cgi脚本
+
+熟悉uboot是如何实现灯控制以及通过网页救砖的过程。
+
+
+通过ASK平台熟悉网关的各种问题 5~10
+	熟悉
+
+
+在外网搭建mosquitto服务器，使用SSl配置自签名证书。读取网关发送的数据；配置frp服务器内网穿透，远程访问网关的WEBUI；借助第三方的HTTP服务器uBeac与hookbin读取网关上传的数据；熟悉ASK平台上一些关于Rssi、Network、Server等常见问题以及解决方法。
+
+
+

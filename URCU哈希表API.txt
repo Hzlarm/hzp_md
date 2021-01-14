@@ -1,0 +1,426 @@
+每个进入读侧临界区的线程都需要事先通过 rcu_register_thread() 接口进行注册，退出时调用 rcu_unregister_thread() 接口取消注册。
+
+
+URCU哈希表API
+
+/******************************************************/
+struct cds_lfht *cds_lfht_new(unsigned long init_size,
+			      unsigned long min_nr_alloc_buckets,
+			      unsigned long max_nr_buckets,
+			      int flags,
+			      pthread_attr_t *attr)
+/******************************************************/				  
+该 cds_lfht_new()函数分配一个新的哈希表并返回指向它的指针，否则将返回NULL错误。其参数如下：
+
+init_size：指定最初要分配的哈希桶数，该值必须为2的幂。
+min_nr_alloc_buckets：指定哈希桶的最小数量，该数量也必须为2的幂。
+max_nr_buckets：指定哈希桶的最大数量，该数量必须再次为2的幂。零表示“无限”。
+flags：指定哈希表选项。零值采用默认值，否则，如果需要，可以使用按位或（'|'）组合来指定以下标志：
+	CDS_LFHT_AUTO_RESIZE：自动调整哈希表的大小。注意，cds_lfht_resize()可以调用该 函数来手动调整表的大小。
+	CDS_LFHT_ACCOUNTING：维护表中节点数的计数。要启用收缩哈希表，必须使用此标志。因此CDS_LFHT_AUTO_RESIZE允许哈希表增长，
+			但是“ CDS_LFHT_AUTO_RESIZE | 还需要 CDS_LFHT_ACCOUNTING 来允许散列表缩小。
+attr：pthread_create() 调整大小工作线程的可选线程创建属性（或NULL使用默认属性）。attr实时应用程序中有一个重要的用途，
+			在该应用程序中，设置调整大小的工作线程的优先级很重要，这样可以避免无休止的cds_lfht_add()调用使这些线程饿死。
+			毕竟，这种饥饿可能导致哈希表太小，无法具有链表的查找性能。请注意，attr除非或直到实际调整哈希表的大小，否则将忽略它。
+
+调用cds_lfht_new（）的线程不需要注册为RCU读取器，这意味着允许在很早（例如，在初始化RCU之前）调用cds_lfht_new（）。
+
+
+/******************************************************/
+int cds_lfht_destroy（struct cds_lfht * ht，pthread_attr_t ** attr）
+/******************************************************/
+该cds_lfht_destroy()函数删除以前使用创建的哈希表cds_lfht_new()。如果删除成功，则返回零。该cds_lfht_destroy()函数的参数如下：
+
+ht：指向要破坏的哈希表的指针。
+attr：指向一个指针的指针，在该指针中存储attr传递给的相应调用的指针cds_lfht_new。目的是允许调用方取消分配存储。如果调用方不需要释放存储空间（例如，如果attr是静态分配的）， NULL则可以传入。
+调用线程cds_lfht_destroy()必须注册为RCU读取器（使用rcu_register_thread()）。cds_lfht_destroy()从RCU读取侧关键部分或传递给的任何函数中 调用都是非法的call_rcu()。
+
+在调用此函数之前，哈希表必须为空，否则将返回失败。此外，在调用之前，哈希表上的所有其他操作必须已经停止cds_lfht_destroy()。
+
+
+/******************************************************/
+void cds_lfht_resize（struct cds_lfht * ht，unsigned long new_size）
+/******************************************************/
+该cds_lfht_resize()功能启动调整大小操作。其参数如下：
+
+ht：指向要调整大小的哈希表的指针。
+new_size：所需大小，应为2的幂。
+调用线程cds_lfht_resize()必须注册为RCU读取器（使用rcu_register_thread()）。请注意，此功能不一定执行任何内存屏障。
+
+
+
+/******************************************************/
+void cds_lfht_count_nodes(struct cds_lfht *ht,
+			  long *split_count_before,
+			  unsigned long *count,
+			  long *split_count_after)
+/******************************************************/
+该cds_lfht_count_nodes()函数计算哈希表中的元素数。请注意，可以随时将节点添加到该哈希表或从该哈希表中删除，因此，除非调用者在持续时间内禁止对哈希表进行更新，否则任何计数都将是近似值。
+
+ht：指向哈希表的指针。
+split_count_before：如果CDS_LFHT_ACCOUNTING 在创建哈希表时指定了该值，则在遍历哈希表之前，将结果计数的总和存储到引用的变量中。另一方面，如果没有CDS_LFHT_ACCOUNTING，则存储的值将始终为零。
+count：元素的实际计数将存储到引用的变量中。通过遍历完整的哈希表获得此计数。
+split_count_after：如果CDS_LFHT_ACCOUNTING 在创建哈希表时指定了该值，那么在遍历哈希表后，结果计数的总和将存储到引用的变量中。同样，没有CDS_LFHT_ACCOUNTING，存储的值将始终为零。
+调用方必须位于RCU读取侧关键部分，因此必须已注册为RCU读取器（使用rcu_register_thread()）。
+
+
+
+
+/******************************************************/
+struct cds_lfht_node *cds_lfht_iter_get_node(struct cds_lfht_iter *iter)
+/******************************************************/
+此函数cds_lfht_node 从cds_lfht_iter结构（例如由产生 的结构）中提取指向结构的指针cds_lfht_lookup()。调用者通常需要申请将 caa_container_of()其映射cds_lfht_node到封闭的数据结构。
+
+iter：指向cds_lfht_iter结构的指针。
+调用方必须位于RCU读取侧关键部分，因此必须已注册为RCU读取器（使用rcu_register_thread()）。请注意，此RCU读取侧关键部分必须将完整的代码路径从最初的哈希表遍历cds_lfht_lookup()或 cds_lfht_first()初始化的哈希表遍历括起来iter。
+
+
+
+/******************************************************/
+void cds_lfht_lookup(struct cds_lfht *ht,
+		     unsigned long hash,
+		     cds_lfht_match_fct match,
+		     const void *key,
+		     struct cds_lfht_iter *iter)
+/******************************************************/
+该 cds_lfht_lookup()函数查找指定的元素。
+
+ht：指向哈希表的指针。
+hash：所需元素的哈希。
+match：匹配函数，必须定义如下：
+	int match（struct cds_lfht_node * node，const void * key）
+	
+如果key与关联的函数匹配，该函数必须返回非零node值，否则返回零。
+key：所需元素的键。请注意，在调用之前，调用 cds_lfht_lookup()者必须已经根据hash引用的对象进行了计算key。
+iter：指向调用者提供的cds_lfht_iter结构的指针，在该 结构中 cds_lfht_lookup()放置查找结果。该 cds_lfht_iter_get_node()函数可用于从中提取结果节点iter。
+调用方必须位于RCU读取侧关键部分，因此必须已注册为RCU读取器（使用rcu_register_thread()）。请注意，该cds_lfht_lookup()函数扮演的角色rcu_dereference()，允许正常访问元素的字段。
+
+
+
+/******************************************************/
+void cds_lfht_first(struct cds_lfht *ht, struct cds_lfht_iter *iter)
+/******************************************************/
+cds_lfht_first()函数在哈希表中查找第一个元素。cds_lfht_lookup()为了开始对散列表中的所有元素的完整扫描，可以使用该函数代替 。
+
+ht：指向哈希表的指针。
+iter：指向调用者提供的cds_lfht_iter结构的指针，在该 结构中 cds_lfht_first()放置查找结果。该cds_lfht_iter_get_node()函数可用于从中提取结果节点iter。
+调用方必须位于RCU读取侧关键部分，因此必须已注册为RCU读取器（使用rcu_register_thread()）。请注意，该cds_lfht_first()函数充当的角色rcu_dereference()，允许正常读取和写入元素的字段。
+
+
+
+
+/******************************************************/
+void cds_lfht_next(struct cds_lfht *ht, struct cds_lfht_iter *iter)
+/******************************************************/
+将指定的迭代器前进到下一个哈希元素，即使该元素在某个更高版本的哈希存储桶中也是如此。
+
+ht：指向哈希表的指针。
+iter：指向调用者提供的迭代器的指针，该迭代器在哈希表中标记当前元素。返回时，将更新它以引用下一个元素，NULL如果没有下一个元素，则引用该元素。无论哪种方式，cds_lfht_iter_get_node()都可以使用函数从中提取结果节点iter。
+调用方必须位于RCU读取侧关键部分，因此必须已注册为RCU读取器（使用rcu_register_thread()）。请注意，该cds_lfht_next()函数充当的角色rcu_dereference()，允许正常读取和写入元素的字段。
+
+
+
+
+/******************************************************/
+void cds_lfht_next_duplicate(struct cds_lfht *ht,
+			     cds_lfht_match_fct match,
+			     const void *key,
+			     struct cds_lfht_iter *iter)
+/******************************************************/
+将指定的迭代器前进到下一个哈希元素，但前提是下一个元素与指定的键匹配。
+
+ht：指向哈希表的指针。
+match：匹配功能，必须按照中所述进行定义cds_lfht_lookup()。
+key：所需元素的键。
+iter：指向调用者提供的迭代器的指针，该迭代器在哈希表中标记当前元素。返回时，将更新它以引用下一个元素，NULL如果没有下一个元素，则引用该元素。无论哪种方式，cds_lfht_iter_get_node()都可以使用函数从中提取结果节点iter。
+调用方必须位于RCU读取侧关键部分，因此必须已注册为RCU读取器（使用rcu_register_thread()）。请注意，该cds_lfht_next_duplicate()函数充当的角色rcu_dereference()，允许正常读取和写入元素的字段。
+
+
+
+/******************************************************/
+int cds_lfht_is_node_deleted(struct cds_lfht_node *node)
+/******************************************************/
+检查指定节点是否已删除，如果已删除，则返回非零值。
+
+node：指向要检查是否删除的节点的指针。
+调用方必须位于RCU读取侧关键部分，因此必须已注册为RCU读取器（使用rcu_register_thread()）。请注意，此RCU读取侧关键部分必须将完整的代码路径从初始cds_lfht_lookup()或 cds_lfht_first()启动此哈希表遍历的位置括起来。
+
+
+
+/******************************************************/
+cds_lfht_for_each(ht, iter, node)
+/******************************************************/
+遍历哈希表中的所有条目。该宏扩展为for语句，因此必须紧随其后是语句或语句块。
+
+ht：指向哈希表的指针。
+iter：指向用于控制遍历的调用方提供的cds_lfht_iter结构的 指针 cds_lfht_for_each()。
+node：cds_lfht_node遍历哈希表中所有节点的指针。用于caa_container_of()将节点映射到封闭的数据结构。
+调用方必须位于RCU读取侧关键部分，因此必须已注册为RCU读取器（使用rcu_register_thread()）。此RCU读取侧关键部分必须包含整个循环：在循环体内暂时退出RCU读取侧关键部分是非法的。
+
+
+
+/******************************************************/
+cds_lfht_for_each_duplicate(ht, hash, match, key, iter, node)
+/******************************************************/
+遍历哈希表中具有指定键的所有条目。该宏扩展为for语句，因此必须紧随其后是语句或语句块。
+
+ht：指向哈希表的指针。
+hash：键值的哈希值。
+match：匹配功能，必须按照中所述进行定义cds_lfht_lookup()。
+key：所需的键。
+iter：指向用于控制遍历的调用方提供的cds_lfht_iter结构的 指针 cds_lfht_for_each()。
+node：cds_lfht_node遍历哈希表中所有节点的指针。用于caa_container_of()将节点映射到封闭的数据结构。
+调用方必须位于RCU读取侧关键部分，因此必须已注册为RCU读取器（使用rcu_register_thread()）。此RCU读取侧关键部分必须包含整个循环：在循环体内暂时退出RCU读取侧关键部分是非法的。
+
+
+
+/******************************************************/
+cds_lfht_for_each_entry(ht, iter, pos, member)
+/******************************************************/
+遍历哈希表中每个条目的封闭数据结构。该宏扩展为for语句，因此必须紧随其后是语句或语句块。
+
+ht：指向哈希表的指针。
+iter：指向用于控制遍历的调用方提供的cds_lfht_iter结构的 指针 cds_lfht_for_each()。
+pos：包含数据结构类型的指针。
+member：cds_lfht_node 封闭数据结构中的字段名称。
+调用方必须位于RCU读取侧关键部分，因此必须已注册为RCU读取器（使用rcu_register_thread()）。此RCU读取侧关键部分必须包含整个循环：在循环体内暂时退出RCU读取侧关键部分是非法的。
+
+
+
+
+/******************************************************/
+cds_lfht_for_each_entry_duplicate(ht, hash, match, key, iter, pos, member)
+/******************************************************/
+遍历哈希表中与指定键匹配的每个条目的封闭数据结构。该宏扩展为for语句，因此必须紧随其后是语句或语句块。
+
+ht：指向哈希表的指针。
+hash：键值的哈希值。
+match：匹配功能，必须按照中所述进行定义cds_lfht_lookup()。
+key：所需的键。
+iter：指向用于控制遍历的调用方提供的cds_lfht_iter结构的 指针 cds_lfht_for_each()。
+pos：包含数据结构类型的指针。
+member：cds_lfht_node 封闭数据结构中的字段名称。
+调用方必须位于RCU读取侧关键部分，因此必须已注册为RCU读取器（使用rcu_register_thread()）。此RCU读取侧关键部分必须包含整个循环：在循环体内暂时退出RCU读取侧关键部分是非法的。
+
+
+
+
+/******************************************************/
+void cds_lfht_add(struct cds_lfht *ht,
+		  unsigned long hash,
+		  struct cds_lfht_node *node)
+/******************************************************/
+将指定的节点添加到哈希表。此功能是添加重复键的唯一方法。
+
+ht：指向哈希表的指针。
+hash：键值的哈希值。
+node：指向cds_lfht_node 要添加的封闭数据结构的字段的指针。
+调用方必须位于RCU读取侧关键部分，因此必须已注册为RCU读取器（使用rcu_register_thread()）。此函数在其原子提交之前和之后发出完整的内存屏障。
+
+
+
+
+/******************************************************/
+struct cds_lfht_node *cds_lfht_add_unique(struct cds_lfht *ht,
+					  unsigned long hash,
+					  cds_lfht_match_fct match,
+					  const void *key,
+					  struct cds_lfht_node *node)
+/******************************************************/
+将指定的节点添加到哈希表中，但前提是尚未存在具有指定键的节点。返回添加的节点（如果成功），否则返回哈希表中具有指定键的节点。
+
+ht：指向哈希表的指针。
+hash：键值的哈希值。
+match：匹配功能，必须按照中所述进行定义cds_lfht_lookup()。
+key：所需的键。
+node：指向cds_lfht_node 替换封闭数据结构字段的指针。
+调用方必须位于RCU读取侧关键部分，因此必须已注册为RCU读取器（使用rcu_register_thread()）。
+
+成功完成后，此函数将在其原子提交之前和之后发出完整的内存屏障。发生故障时，此函数将充当的角色rcu_dereference()，从而允许正常读取和写入冲突元素的字段。
+
+
+
+
+/******************************************************/
+struct cds_lfht_node *cds_lfht_add_replace(struct cds_lfht *ht,
+					   unsigned long hash,
+					   cds_lfht_match_fct match,
+					   const void *key,
+					   struct cds_lfht_node *node)
+/******************************************************/
+用指定的密钥替换该节点，或者，如果没有这样的节点，则添加一个。返回替换的节点（如果存在），否则返回NULL。
+
+ht：指向哈希表的指针。
+hash：键值的哈希值。
+match：匹配功能，必须按照中所述进行定义cds_lfht_lookup()。
+key：所需的键。
+node：指向cds_lfht_node 替换封闭数据结构字段的指针。
+调用方必须位于RCU读取侧关键部分，因此必须已注册为RCU读取器（使用rcu_register_thread()）。此函数在其原子提交之前和之后发出完整的内存屏障。
+
+如果cds_lfht_add_replace()成功替换了现有节点，则cds_lfht_lookup()可以保证使用同一密钥的任何并发都不会失败，即使是暂时失败。
+
+调用方必须等待完整的宽限期（例如，通过synchronize_rcu()在替换与释放已替换的旧节点之间进行调用） 。
+
+
+
+/******************************************************/
+int cds_lfht_replace(struct cds_lfht *ht,
+		     struct cds_lfht_iter *old_iter,
+		     unsigned long hash,
+		     cds_lfht_match_fct match,
+		     const void *key,
+		     struct cds_lfht_node *new_node)
+/******************************************************/
+用指定的键替换该节点，或者，如果没有这样的节点，则返回失败（-ENOENT）。
+
+ht：指向哈希表的指针。
+old_iter：指向调用者提供的迭代器的指针，该迭代器在哈希表中标记当前元素。
+hash：键值的哈希值。
+match：匹配功能，必须按照中所述进行定义cds_lfht_lookup()。
+key：所需的键。
+new_node：指向cds_lfht_node 替换封闭数据结构字段的指针。
+调用方必须位于RCU读取侧关键部分，因此必须已注册为RCU读取器（使用rcu_register_thread()）。
+
+成功完成后，此函数将在其原子提交之前和之后发出完整的内存屏障。失败时，此函数不提供任何内存排序语义。
+
+如果cds_lfht_replace()成功替换了现有节点，则cds_lfht_lookup()可以保证使用同一密钥的任何并发都不会失败，即使是暂时失败。
+
+调用方必须等待完整的宽限期（例如，通过synchronize_rcu()在替换与释放已替换的旧节点之间进行调用） 。
+
+
+
+
+/******************************************************/
+int cds_lfht_del(struct cds_lfht *ht, struct cds_lfht_node *node)
+/******************************************************/
+从哈希表中删除指定的节点，成功则返回零，失败则返回负错误代码。
+
+ht：指向哈希表的指针。
+node：指向cds_lfht_node 要删除的封闭数据结构的字段的指针。A NULL node将导致失败。
+调用方必须位于RCU读取侧关键部分，因此必须已注册为RCU读取器（使用rcu_register_thread()）。该RCU读取侧关键部分必须包含 cds_lfht_del()调用以及所查找的所有函数调用链node。
+
+成功完成后，此函数将在其原子提交之前和之后发出完整的内存屏障。失败时，此函数不提供任何内存排序语义。
+
+调用方必须等待完整的宽限期（例如，通过synchronize_rcu()在删除和释放已删除的节点之间进行调用） 。
+
+
+
+
+
+/******************************************************/
+快速测验1：但是，如果的调用方cds_lfht_count_nodes()需要位于RCU的读取侧关键部分中，这听起来很像是此函数确实一次在对哈希表中的元素进行计数，这在很大程度上可能会很慢哈希表。为什么不只对哈希表中的元素数进行简单计数？您可以在添加元素时增加它，而在删除该元素时减少它。有什么可能更简单？
+
+答：确实很简单，但是也会破坏元素添加和删除的性能和可伸缩性。当然，有一些特殊用途的计数器可以很好地执行和扩展，但是它们往往非常专业。因此，如果快速计数很重要，则哈希表的用户应寻求任何合适的并行计数器的帮助。在“ 并行编程难”的计数一章中可以找到几个这样的计数器 ，如果可以，您将如何处理？。
+/******************************************************/
+
+
+
+
+/******************************************************/
+快速测验2：呼叫者为什么不向其提供哈希cds_lfht_next_duplicate()？这样是否会加快不匹配的排除率？
+
+回答：因为cds_lfht_next_duplicate()继续从具有所需哈希值的节点进行遍历，cds_lfht_next_duplicate() 所以可以从该先前节点加载密钥（已经位反转）。这就提出了一个问题，为什么cds_lfht_next_duplicate() 也不能从相同的先前节点访问密钥。答案是哈希表不知道键在哪里。相反，它传递给调用者提供的match()函数，该函数知道密钥在节点的调用者定义的部分中的位置。这种方法允许调用者使用任意定义的密钥，但也要求cds_lfht_next_duplicate()传递该密钥。
+/******************************************************/
+
+
+
+
+/******************************************************/
+为什么要打扰cds_lfht_iter结构？为什么不仅仅遍历cds_lfht_node 组成哈希表本身的结构呢？
+
+答：cds_lfht_iter需要单独的结构，以便正确处理cds_lfht_replace()和 cds_lfht_add_replace() 调用与查找和遍历同时执行。
+
+在 cds_lfht_replace() 和cds_lfht_add_replace()运营方式被替换的节点后，立即将替换节点提供自己的独特性保证。诀窍在于，可以通过将指向已删除节点的下一个节点的指针的底部位中的某个位，来将给定节点标记为已删除，而无需将其实际从哈希表中删除。这意味着cds_lfht_replace()和 cds_lfht_add_replace()操作可以在指向要替换的节点中存储的替换节点的指针中设置“已删除”位，从而添加替换节点并使用单个存储原子地删除替换的节点。
+
+当然，标记为已删除的节点最终必须从哈希表中删除，但是可以以惰性方式完成此删除操作。下图说明了这一过程（虚构）：
+
+[图]
+时间从左到右经过五个状态。在第一种状态中，我们具有元素A，B和C。调用cds_lfht_replace()B替换B'，将指针从元素B中标记出来，如第二种状态所示。注意，用元素B'替换元素B的操作是通过对元素B的->next 指针进行一次存储来完成的，从而使替换对读者而言似乎是原子的。在稍后的某个时间，现在已过时的元素B将从列表中删除，如第三种状态所示，此后，新读者将无法再使用它（因此颜色从红色变为黄色）。以后的调用synchronize_rcu()等待所有先前存在的读取器完成，因此不再有读取器访问旧元素B（因此颜色从黄色变为绿色），如第四种状态所示。此时，可以安全释放元素B，如第五个和最后一个状态所示。
+
+在查找和遍历方面，问题在于我们无法两次获取给定的指针，因为在此期间指针可能会更改。另外，在返回指向给定对象的指针之前，必须检查指向下一个对象的指针，以检查其是否已被标记为已删除。但是我们将需要在下一个遍历循环时引用相同的指针。因此，我们需要在循环的主体中跟踪两个指针，并且cds_lfht_iter结构是存储这些指针的位置。
+/******************************************************/
+
+
+https://lwn.net/Articles/573441/
+
+URCU提供了两种类型的RCU保护列表，这些列表是从GNU libc实现派生的。一组是圆形且双重链接，而另一组是线性但仍双重链接。在这两种情况下，插入和删除都是O（1）操作，即使仅给出指向所讨论项目的指针。
+
+循环列表将 cds_list_head 结构用于列表标题和列表元素。此结构嵌入到要包含在列表中的数据结构中。通过将给定的数据结构cds_list_head嵌入其中，可以将其放置在多个列表中。相同的cds_list_head结构可用于受RCU保护的列表以及受其他同步机制保护的列表。
+
+循环列表最适合许多情况，但是如果要创建大型哈希表，则cds_list_head结构的一对指针会消耗过多的存储空间。具有较小标头结构的线性列表可以更好地满足此用例。线性列表将cds_hlist_head结构用于列表标题，并将cds_hlist_node结构用于列表元素。与循环列表类似，该cds_hlist_node结构通常嵌入在要包含在列表中的数据结构中。
+
+这两种类型的列表的API应该相当熟悉，因此下面列出了它们，并提供了很少的解释。第一个列表用于循环列表，第二个列表用于线性列表。在所有情况下，除非另有说明，否则调用者必须采取所需的任何措施以确保更新程序和非RCU读取器对所涉及的列表和元素的独占访问，例如，通过持有适当的锁。
+
+循环cds_list_head列表上的操作是：
+
+CDS_INIT_LIST_HEAD(ptr)：cds_list_head从可执行代码初始化结构。
+CDS_LIST_HEAD_INIT(name)：用于cds_list_head结构声明的初始化程序。使用示例：
+struct cds_list_head my_list = CDS_LIST_HEAD_INIT(my_list);
+CDS_LIST_HEAD(name)：声明cds_list_head结构并将其初始化为全局变量或堆栈上的变量。
+void cds_list_add(struct cds_list_head *newp, struct cds_list_head *head)：将元素添加newp到列表的开头head。
+void cds_list_add_tail(struct cds_list_head *newp, struct cds_list_head *head)：将元素添加newp到列表的末尾head。
+void cds_list_del(struct cds_list_head *elem)：elem从元素列表中删除元素。仅当该元素已正确初始化时，才对不属于列表的元素调用此函数是合法的。
+void cds_list_del_init(struct cds_list_head *elem)：类似于cds_list_del()，但在删除元素后对其进行初始化。
+int cds_list_empty(struct cds_list_head *head)：true如果列表head为空，则返回。
+cds_list_entry(ptr, type, member)：给定一个指针ptr到一个cds_list_head 嵌入在类型的结构构造type 为字段member，返回指针到封闭结构。
+cds_list_first_entry(ptr, type, member)：给定一个指针ptr到一个cds_list_head 结构，并且考虑到该列表元件嵌入型的结构type如字段member，返回指针到封闭结构为列表中的第一个元素。
+cds_list_for_each_entry(pos, head, member)：head使用指针pos （属于封闭结构的类型）遍历列表，其中 封闭结构内的cds_list_headare字段member。简而言之，pos在循环中每次引用列表中的每个元素。该宏扩展为for循环，因此必须紧随其后的是语句或语句块。
+cds_list_for_each_entry_reverse(pos, head, member)：类似于cds_list_for_each_entry()，但是以相反的顺序遍历列表。
+cds_list_for_each(pos, head)：迭代指针pos以开头cds_list_head 的列表中的结构head。
+cds_list_for_each_safe(pos, p, head)：类似于cds_list_for_each()，但是预先遍历->next指针，以便循环主体可以安全地删除当前元素。
+cds_list_for_each_prev(pos, head)：类似于cds_list_for_each()，但head以相反的顺序在之前和之前的元素处开始遍历。
+cds_list_for_each_prev_safe(pos, p, head)：类似于cds_list_for_each_prev()，但是预先遍历->prev指针，以便循环主体可以安全地删除当前元素。
+void cds_list_move(struct cds_list_head *elem, struct cds_list_head *head)：elem从列表中的任何元素移出元素，然后将其添加为的第一个元素head。
+void cds_list_replace(struct cds_list_head *old, struct cds_list_head *_new)：old从列表中删除元素，并用替换new。
+void cds_list_replace_init(struct cds_list_head *old, struct cds_list_head *_new)：类似于cds_list_replace()，但是正在初始化 old。
+void cds_list_splice(struct cds_list_head *add, struct cds_list_head *head)：将以add开头的列表拼接到以开头的列表的开头head。
+此外，以下受RCU保护的操作也可用于循环cds_list_head列表：
+
+void cds_list_add_rcu(struct cds_list_head *newp, struct cds_list_head *head)：将元素添加newp到列表的开头head，以允许并发RCU读取器。调用此功能的线程无需注册为RCU读取器。
+void cds_list_del_rcu(struct cds_list_head *elem)：与相似cds_list_del()，但允许同时使用RCU读取器。调用此功能的线程无需注册为RCU读取器。
+void cds_list_replace_rcu(struct cds_list_head *old, struct cds_list_head *_new)：类似于cds_list_replace()，但允许同时使用RCU读取器。调用此功能的线程无需注册为RCU读取器。
+cds_list_for_each_entry_rcu(pos, head, member)：类似于cds_list_for_each_entry()，但允许并发RCU更新器。请注意，调用线程必须注册为RCU读取器，并且必须位于RCU读取侧关键部分。
+cds_list_for_each_rcu(pos, head)：类似于cds_list_for_each()，但允许同时使用RCU读取器。请注意，调用线程必须注册为RCU读取器，并且必须位于RCU读取侧关键部分。
+线性cds_hlist_head列表上的操作是：
+
+void CDS_INIT_HLIST_HEAD(struct cds_hlist_head *ptr)：cds_hlist_head从可执行代码初始化结构。
+void cds_hlist_add_head(struct cds_hlist_node *newp, struct cds_hlist_head *head)：将元素添加newp到列表的开头head。
+void cds_hlist_del(struct cds_hlist_node *elem)：elem从其中的任何列表中删除元素。
+cds_hlist_entry(ptr, type, member)：给定一个指针ptr到一个cds_hlist_node 嵌入在类型的结构构造type 为字段member，返回指针到封闭结构。
+cds_hlist_for_each_entry(entry, pos, head, member)：迭代指向所指向entry的列表的封闭结构的指针head，其中 cds_hlist_node结构作为字段嵌入在封闭结构中member。该pos参数在内部使用，并且必须为类型cds_hlist_node。该宏扩展为for语句，因此必须紧随其后是语句或语句块。
+cds_hlist_for_each_entry_2(entry, head, member)：迭代指向所指向entry的列表的封闭结构的指针head，其中 cds_hlist_node结构作为字段嵌入在封闭结构中member。该宏扩展为for语句，因此必须紧随其后是语句或语句块。
+cds_hlist_for_each_entry_safe(entry, pos, p, head, member)：类似于cds_hlist_for_each_entry()，但允许循环主体删除和释放当前元素。
+cds_hlist_for_each_entry_safe_2(entry, p, head, member)：类似于cds_hlist_for_each_entry_2()，但允许循环主体删除和释放当前元素。
+此外，以下受RCU保护的操作也可用于线性cds_hlist_head列表：
+
+void cds_hlist_add_head_rcu(struct cds_hlist_node *newp, struct cds_hlist_head *head)：类似于cds_hlist_add_head()，但允许同时使用RCU读取器。调用此功能的线程无需注册为RCU读取器。
+void cds_hlist_del_rcu (struct cds_hlist_node *elem)：类似于cds_hlist_del()，但允许同时使用RCU读取器。调用此功能的线程无需注册为RCU读取器。
+cds_hlist_for_each_entry_rcu (entry, pos, head, member)：类似于cds_hlist_for_each_entry()，但允许并发读者。
+cds_hlist_for_each_entry_rcu_2 (entry, head, member)：类似于cds_hlist_for_each_entry_2()，但允许并发读者。
+当然，至少在没有很大一部分RCU读取器的情况下，单个列表上的并行操作不能很好地扩展。因此，通常的方法是拥有大量列表，每个列表都可以独立操作。一种执行此操作的方法是将列表分组为哈希表，这些哈希表在单独的文章中介绍。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

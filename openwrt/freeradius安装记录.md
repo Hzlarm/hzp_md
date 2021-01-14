@@ -50,7 +50,7 @@ git pull
 
 `sudo apt-get install libkqueue-dev`
 
-make 
+make
 
 sudo make install
 
@@ -82,7 +82,7 @@ steve   Cleartext-Password := "testing"
 
 在另一个终端：`radtest testing localhost 1812 testing123`
 
-#### 其他配置方案测试：
+### 重点
 
 ```bash
 ## vi users 用户配置
@@ -111,6 +111,8 @@ mschap
  
 ```
 
+#### 其他配置方案测试：
+
 ##### pap： 
 
 `radtest hzlarm hzlarm123 127.0.0.1 1812 testing123`
@@ -121,7 +123,7 @@ mschap
 #   radeapclient -x 127.0.0.1 auth testing123 < eap-md5.txt
 #	以下内容写在eap-md5.txtf文件
 
-User-Name = "hzlarm "
+User-Name = "hzlarm"
 Cleartext-Password = "hzlarm123"
 EAP-Code = Response
 EAP-Id = 210
@@ -244,7 +246,7 @@ network={
 }
 ```
 
-
+<u></u>
 
 #####  ttls-mschapv2:
 

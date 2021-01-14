@@ -158,8 +158,8 @@
               option ApCliEncrypType 'AES'
               option ApCliWPAPSK 'beacon888'
       
-      ```
-      
+    ```
+    
     - **Repeater & static** : 在Repeater & dhcp 的模式基础上直接修改片段
     
       ```shell
@@ -180,9 +180,69 @@
    
       - <https://openwrt.org/docs/guide-user/base-system/basic-networking> 官方对/etc/config/network的解析
       
-    - **/etc/config/wireless**
     
-      - 该文件会因为wifi的驱动不同而不同
+    
+    
+    
+    
+    
+    - **/etc/config/wireless**
+    - 该文件会因为wifi的驱动不同而不同
+
+wireless参数解析。
+
+| 名 称       | 类 型  | 含 义                                                        |
+| ----------- | ------ | ------------------------------------------------------------ |
+| wifi-device | 字符串 | 无线网络物理设备名称                                         |
+| macaddr     | 字符串 | 无线网络物理设备的 MAC 地址                                  |
+| txpower     | 字符串 | 设备发射功率，和 iwconfig 看到的接口发射功率对应             |
+| country     | 字符串 | 国家编码                                                     |
+| hwmode      | 字符串 | 设备工作模式，11g 代表 2.4G，11ac 代表 5G，和 iwconfig 看到的 接口工作模式对应 |
+| channel     | 字符串 | 设备工作信道，自动或者 1-14 (2.4G)                           |
+| device      | 字符串 | 三层接口和物理接口绑定设置                                   |
+| network     | 字符串 | 网络层工作方式，例如："lan"                                  |
+| mode        | 字符串 | 接口工作模式，例如："station" "ap"                           |
+| ssid        | 字符串 | 无线网络标识符                                               |
+| key         | 字符串 | 无线网络密码                                                 |
+| encryption  | 字符串 | 无线加密方式，例如："psk2" "wpa-psk"                         |
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -203,3 +263,8 @@ config timeserver ntp
         option enabled 1
         option enable_server 0
 ```
+
+
+
+
+
