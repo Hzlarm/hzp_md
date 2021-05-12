@@ -1,0 +1,196 @@
+/*********************/
+使用GPIO5
+/*********************/
+	寄存器 10000060 的第21、20位00代表I2C，01代表GPIO. GPIO#5与GPIO#4
+	0x55054045   --->   0x55154045
+	reg r 0x10000060
+
+	寄存器 10000600 控制GPIO31-0的模式是否为输出，设置GPIO#5,GPIO#4为输出模式(原先GPIO#11就是输出模式)
+	0x800   --->   0x830
+	reg r 0x10000600
+	uboot中已经设置GPIO#5输出模式，需要手动设置GPIO#4为输出模式
+reg w 0x10000600 0x830
+
+	寄存器 10000620 表示GPIO31-0输入模式时输入的值或者控制输出值。
+reg r 0x10000620
+
+	寄存器 10000630 控制GPIO31-0 输出置位	WO
+	需要拉高 GPIO#5 使能看门狗然后 GPIO#4 方波喂狗
+reg w 0x10000630 0x20
+
+
+	寄存器 10000640 控制GPIO31-0 输出清零	WO
+reg w 0x10000640 0x10
+
+/*********************/
+开启看门狗并且喂狗
+/*********************/
+vi wdt
+#!/bin/sh
+
+reg w 0x10000630 0x20
+
+while :
+do
+reg w 0x10000640 0x10
+usleep 500000
+reg w 0x10000630 0x10
+done
+
+/*********************/
+关闭看门狗
+/*********************/
+vi diswdt
+#!/bin/sh
+
+reg w 0x10000640 0x20
+ps |grep wdt |grep -v "grep" | awk '{print $1}'| xargs kill -9 2>/dev/null
+/*********************/
+
+	
+uboot lib_mips/board.c	1440
+	/* add by minew*/
+	//set I2C_MODE : I2C_SCLK-->GPIO#4  I2C_SD-->GPIO#5
+	RALINK_REG(RT2880_GPIOMODE_REG)&=~(1<<21); 
+	RALINK_REG(RT2880_GPIOMODE_REG)|=1<<20; 
+	//set GPIO4 GPIO5 output mode
+	RALINK_REG(RT2880_REG_PIODIR)|=1<<4; //output mode
+	RALINK_REG(RT2880_REG_PIODIR)|=1<<5; //output mode
+	printf("************************************\n");
+	printf("pull low GPIO5 to disable stwd100!!!\n");
+	printf("************************************\n");
+	RALINK_REG(RT2880_REG_PIODATA)&=~(1<<5);
+
+
+/*********************/
+开启看门狗并且喂狗	c run_stwd100
+/*********************/
+vi run_stwd100
+#!/bin/sh
+###i2c or gpio?
+REG_I2C_MODE=$(reg r 0x10000060 | awk {'print $3'})
+#echo $REG_I2C_MODE >/dev/console
+let "VAL=$REG_I2C_MODE | 1<<20"
+let "VAL=$VAL & ~(1<<21)"
+HEOP_I2C_MODE=$(printf "0x%x" $VAL) 
+#echo $HEOP_I2C_MODE >/dev/console
+###reg w 0x10000060 $HEOP_I2C_MODE 
+if [ "$REG_I2C_MODE"x = "$HEOP_I2C_MODE"x ]; then
+	#echo "gpio#4&5 is gpio" >/dev/console
+	#gpio4 and gpio5 out mode?
+	REG_GPIO_MODE=$(reg r 0x10000600 | awk {'print $3'})
+	#echo $REG_GPIO_MODE >/dev/console
+	let "VAL=$REG_GPIO_MODE|0x30"
+	HOPE_GPIO_MODE=$(printf "0x%x" $VAL) 
+	#echo $HOPE_GPIO_MODE >/dev/console
+	if [ "$REG_GPIO_MODE"x != "$HOPE_GPIO_MODE"x ]; then
+		#echo "gpio#4&5 is no out mode!!!" >/dev/console
+		reg w 0x10000600 $HOPE_GPIO_MODE
+	#else 
+		#echo "gpio#4&5 is out mode" >/dev/console
+	fi
+	#pull high gpio5 start stwd100_watchdog
+	reg w 0x10000630 0x20
+	while :
+	do
+	#gpio4 sends square wave to feed stwd100_watchdog
+		reg w 0x10000640 0x10
+		usleep 500000
+		reg w 0x10000630 0x10
+		usleep 500000
+	done
+else 
+	echo -e "\033[;33;1m  gpio#4&5 is i2c!!! exited  \033[0m" >/dev/console
+	exit
+fi
+
+/*********************/
+关闭看门狗	
+/*********************/
+vi stop_stwd100
+#!/bin/sh
+stwd100_watchdog_id=$(ps |grep run_stwd100 |grep -v "grep" | awk '{print $1}')
+if [ x$stwd100_watchdog_id != "x" ]; then
+	echo -e "\033[;33;1m   run_stwd100:$stwd100_watchdog_id will killed   \033[0m"  >/dev/console
+	#pull low gpio5 stop stwd100_watchdog
+	reg w 0x10000640 0x20
+	kill -9 $stwd100_watchdog_id 2>/dev/null
+fi
+
+/*********************/
+开机自启看门狗	
+/*********************/
+#vi /etc/rc.local
+run_stwd100 &
+echo -e "\033[;33;1m   run_stwd100 started  \033[0m"  >/dev/console
+
+
+
+uboot-add_stwd.bin
+
+uboot-random-test-stwd.bin
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+看门狗
+
+这里涉及到的寄存器，请查询7688手册1.4版本的69页 http://wiki.widora.cn/_media/mt7688_datasheet_v1_4.pdf 。
+
+查看datasheet可得寄存器相关数据：
+寄存器 10000120 为Watch Dog控制寄存器。		
+				16-31位设置分频系数，默认单位为1us，0x3e80=1000，0x03e80000是分频到千分之一，也就是设置为1ms。
+				7位为使能位，
+				4位为自动加载位。
+				
+寄存器 10000124 为Watch Dog计时限制寄存器
+				0-15位为倒计时数字设置。0x2710=10000，0x1388=5000，0x07d0是2000。单位由上面的寄存器设定如设为1ms，这里填0x2710就表示10s
+
+寄存器 10000100 为RISC全局控制寄存器
+				9位为看门狗reset位，将看门狗的计时器值重置为Watch Dog计时限制寄存器中的值比如0x2710，每写入一次1即喂狗一次。
+
+寄存器 10000128 为看门狗计时器。 reg -r 10000128 查看
+				分频系数不断递减，减为0则重启系统。喂狗则重置。
+
+
+
+
+首先，enable_watchdog.sh脚本：
+
+#!/bin/sh
+reg w 10000120 0x03e80000
+reg w 10000124 0x2710
+reg w 10000120 0x03e80090      
+
+第一句是设置分频系数，系统默认是1us，也就是1M，此处3e8是分频到千分之一，也就是1ms。0x3e80=1000
+第二句是这是看门狗的初始值，7d0是2000。看门狗是个减法计时器，减到0发起系统复位。所以此出意义是2秒。15-0位是看门狗倒计时数字，0x2710=10000也就是10s，0x1388=5000
+第三句是启动看门狗,自动加载。7位使能，4位自动加载
+
+上述脚本运行后，如果什么都不做，10秒后系统会重启。所以要想保证系统持续运行，必须有喂狗脚本eat_watchdog.sh，如下：
+
+#!/bin/sh
+reg w 10000100 0x0200
+reg w 10000120 0x03e80090
+
+//测试未发现该小bug
+/********************************/
+10000100寄存器的BIT9是控制看门狗的计数器回归到初始值（7d0），这里好像有个小bug，喂狗后，10000120处的寄存器会被清零，很奇怪，故多增加了一句喂狗后重新启动开门狗。
+因32+128的版本FLASH模式复位后需要从4Byte地址切换回3Byte地址，看门狗部分不能通过系统内复位，需要利用WDT_RST_N引脚来操作系统复位引脚，我稍后会给出那个的操作步骤。
+/*********************************/
+
+vi target/linux/ramips/dts/mt7628an.dtsi
+dts中关闭系统看门狗，mt7628an.dtsi里，看门狗部分加一条：
+status = "disabled";
+
+注意：使用前如果系统没有添加reg工具，需要编译的时候添加进去 Utilities -> reg 用户空间对寄存器操作命令
+测试脚本及文件在目录中

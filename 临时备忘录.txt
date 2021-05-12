@@ -1,0 +1,557 @@
+pppoe：接受如下 option： 
+username：用于 PPP 验证的用户名
+password：用于 PPP 验证的密码
+keepalive：使用 LCP 协议 ping PPP 服务器。这个 option 的值指明 ping 失败多少次后重新连接。ping
+的间隔默认为 5，但是可以在 keepalive 选项中增加",<interval>"来改变间隔值。
+demand：按需拨号。该选项的值指明多长时间没使用流量就断开连接。
+
+
+{
+  "action":"config",
+  "takeEffectImmediately":"YES",
+  "common": {
+    "dupMethod": "mac",
+    "isActive": "NO",
+    "isauto": "NO",
+    "isFilterDupData": "YES",
+    "isJsonFormat": "Json",
+    "isLongFormat": "Long",
+    "isOnlySpecialMac": "NO",
+    "isUploadGateway": "YES",
+    "isUploadIBeacon": "YES",
+    "isUploadS1S3S4": "NO",
+    "isUploadUnkown": "NO",
+    "macList": "",
+    "macReg": "^AC23.*\\|^0CF3.*",
+    "rawReg": "",
+    "regex": "",
+    "rssi": "",
+    "scanInterval": "100",
+    "scanWindow": "100",
+    "schedule": {
+      "hour": "10",
+      "istiming": "YES",
+      "min": "08",
+      "week" : "00,01,02,03,04,05,06"
+    },
+    "timeout": "default",
+    "timeoutRestart": "3",
+    "uploadInterval": "2000"
+  },
+  "http": {
+    "auth": "none",
+    "httpPass": "",
+    "httpUser": "",
+    "hUrl": "",
+    "tUrl": ""
+  },
+        "requestId" : "aaaa"
+}
+
+
+git reset --hard  4b9988c8
+
+48db9919
+
+feat:commit g1-c-v3.2.1
+
+--no-ff
+
+$\color{#FF3030}{red}$
+
+
+红：255，0，0 #FF0000
+橙: 255,125,0 #FF7D00
+黄：255，255，0 #FFFF00
+绿：0，255，0 #00FF00
+蓝：0，0，255 #0000FF
+靛: 0,255,255 #00FFFF
+紫: 255,0,255 #FF00FF
+
+
+
+			   FFE1 1612 E1FF
+02 01 06 03 03 FF 16 E1 12 E1 FF 03 00 64 A1 00 00 00 12 FF D8 B9 A3 3F 23 AC 00 C1 1E
+02 01 06 1A FF 4C 00 02 15 E2 C5 6D B5 DF FB 48 D2 B0 60 D0 F5 A7 10 96 E0 00 00 00 00 C5 00 C5 AC 23 3F A5 14 96 00 02 1D
+
+
+02 01 06 03 03 FF 16 E1 12 E1 FF 03 00 64 A1 00 00 00 12 FF D8 B9 A3 3F 23 AC 00 C1 1E
+
+02 01 06 03 03 E1 FF 12 16 E1 FF A1 03 64 00 00 
+
+未发  screen.md
+
+搁置
+Fabric.md
+
+plane
+
+云编译
+tmux.md 
+
+
+
+
+v2版本解析数据
+BB02 2FFE F918 2C00 0000 1E00 0000 833E 
+1800 0000 0100 0202 1400 0001 0300 6731 
+0009 0067 312D 642D 7072 6F00 
+
+
+BB02
+2FFE F918 	requestID
+2C00 0000	payload Length
+1E00 0000 	Extension Header Length :30
+
+{MDU}
+833E 		3E83:16003  Function id  response
+1800 0000	length:24 
+0100 0202 1400 0001 0300 6731 0009 0067 312D 642D 7072 6F00  data
+
+833E 1800 0000 0100 0202 1400 0001 0300 6731 0009 0067 312D 642D 7072 6F00 
+
+
+
+广播包
+
+
+BB02
+0000 0000
+1A06 0000 	payload Length						061a 1562
+0C06 0000 	Extension Header Length    	 		060c 1548
+
+823E 		Function id  Advertising Packet 	3E82 1602 
+0606 0000   MDU datalength 						0606 1542
+
+28			package_length						28	 40
+00 			BLE number							0
+03			每一位都有相应含义
+202101051538mac
+BC			RSSI 60	
+1E			raw length 30
+0201061AFF4C000215E2C56DB5DFFB48D2B060D0F5A71096E000000000C5
+
+1E
+00
+00 
+AC23 3F77 BBBB
+C4
+14 
+02010605FF3906CAFB0A094D696E657720416F41
+
+25
+00
+03
+AC 233F D154 74
+C8 
+1B
+02 0106 17FF 3906 A286 
+79F0 7C87 01F0 5443 E8A0 AC23 3FD1 5474 
+...
+
+
+
+
+
+ac233fc03cc3
+ac233fc057bd
+ac233fc03cd0
+ac233fc03cd1
+ac233fc03cec
+ac233fc03d48
+
+
+
+typedef struct central_return_t {
+    uint32_t sn;       /*!< serial number */
+    uint16_t fun;      /*!< emFunction */
+    uint32_t length;   /*!< 扩展头MDU内容的长度 */
+    uint8_t *data;     /*!< 扩展头MDU的数据内容 */
+    uint8_t  rsp_code; /*!< 返回码 */
+} central_return_t;
+
+
+typedef struct central_header_t {
+    uint8_t  prefix;       /*!< 0xAA */
+	uint8_t  version : 4;  /*!< version of Hex protocol */
+	uint8_t  reserved : 4; /*!< reserved for funture use */
+    uint32_t checksum; /*!< Aldler32/CRC32 CheckSum of whole packet,except for prefix and checksum field */
+    uint32_t sequence_number;        /*!< sequence number */
+    uint16_t package_length;         /*!< 等于整条数据的大小 */
+    uint32_t payload_total_length;   /*!< payload是通过主端透传给设备端的device data */
+    uint32_t payload_current_offset; /*!< payload_current_offset of data */
+    uint32_t payload_current_length; /*!< length of current payload */
+} __attribute__((packed)) central_header_t;
+
+
+
+typedef struct mdu_t {
+    uint16_t fun;
+    uint32_t length;
+    uint8_t  data[0];
+} __attribute__((packed)) mdu_t;
+
+
+	central_return->sn     = central_header->sequence_number;
+    central_return->fun    = mdu->fun;
+    central_return->length = mdu->length;
+    central_return->data   = mdu->data;
+
+    /* 获取返回码 */
+    switch (central_return->fun) {
+        case emFunInit:
+        case emFunAdvData:
+            central_return->rsp_code = CRspCodeOperationSuccess;
+            break;
+        case emFunResponse:
+            central_return->fun = uart_ctx->current_fun;
+            assert(mdu->length >= sizeof(central_response_t));
+            if (sizeof(central_response_t) <= mdu->length) {
+                central_response_t *response = (central_response_t *)(central_return->data);
+                central_return->rsp_code     = response->rsp_code;
+            }
+            assert(central_return->rsp_code >= CRspCodeSuccess &&
+                   central_return->rsp_code < CRspCodeReservedMax);
+
+            break;
+        case emFunDEH:
+            central_return->fun = uart_ctx->current_fun;
+            assert(central_return->length >= sizeof(mdu_t));
+            mdu_t *device_mdu = (mdu_t *)(central_return->data);
+
+            if (4 == device_mdu->fun) {
+                device_response_t *device_response = (device_response_t *)(device_mdu->data);
+                central_return->rsp_code           = device_response->rsp_code;
+                assert(central_return->rsp_code < DRspCodeReservedMax);
+                logw("DEH [%s] receviced from {BLE%d:UART%d}.\n",
+                     emRspCodeString[central_return->rsp_code],
+                     uart_ctx->central_no,
+                     uart_ctx->uart_no);
+            } else {
+                loge("Why you return %d function in DEH.\n", device_mdu->fun);
+            }
+            break;
+        case emFunLog:
+            assert(central_return->length);
+            logw("Log [%s] receviced from {BLE%d:UART%d}.\n",
+                 central_return->data,
+                 uart_ctx->central_no,
+                 uart_ctx->uart_no);
+            break;
+
+        default:
+            loge("Unrecognized function returned: %d.\n", central_return->fun);
+            //assert(0);
+            central_return->rsp_code = CRspCodeOperationSuccess;
+            break;
+    }
+
+    if (emFunInit != central_return->fun && 0 == central_return->sn) {
+        /* 主端发生错误时，sn返回的是0 */
+        loge("Oops, central {BLE%d:UART%d} may encounted something wrong bcz the sequence number "
+             "is zero & the error is [%s].\n",
+             uart_ctx->central_no,
+             uart_ctx->uart_no,
+             emRspCodeString[central_return->rsp_code]);
+        central_return->sn = uart_ctx->current_sn;
+    }
+
+    if (central_header->payload_total_length) {
+        logi("continue to recevice %d length raw data that from tag, offset: %d, current length: "
+             "%d\n",
+             central_header->payload_total_length,
+             central_header->payload_current_offset,
+             central_header->payload_current_length);
+
+        if (uart_ctx->tag_raw.expected_offset != central_header->payload_current_offset) {
+            //TODO: how to fix this exception
+            loge("unexpected offset error,expected offset is %d, but offset is %d\n",
+                 uart_ctx->tag_raw.expected_offset,
+                 central_header->payload_current_offset);
+            uart_ctx->tag_raw.error = 1;
+        }
+        if (!uart_ctx->tag_raw.raw) {
+            uart_ctx->tag_raw.raw = (uint8_t *)malloc(central_header->payload_total_length);
+            uart_ctx->tag_raw.whole_length = central_header->payload_total_length;
+            uart_ctx->tag_raw.error        = 0;
+            uart_ctx->tag_raw.finished     = 0;
+        } else if (uart_ctx->tag_raw.error && 0 == central_header->payload_current_offset) {
+            if (uart_ctx->tag_raw.whole_length != central_header->payload_total_length) {
+                free(uart_ctx->tag_raw.raw);
+                uart_ctx->tag_raw.raw = (uint8_t *)malloc(central_header->payload_total_length);
+                uart_ctx->tag_raw.whole_length = central_header->payload_total_length;
+            }
+            uart_ctx->tag_raw.error    = 0;
+            uart_ctx->tag_raw.finished = 0;
+        }
+
+        if (central_header->payload_current_offset + central_header->payload_current_length <=
+                uart_ctx->tag_raw.whole_length &&
+            !uart_ctx->tag_raw.error) {
+            memcpy(uart_ctx->tag_raw.raw + central_header->payload_current_offset,
+                   data + datalen - central_header->payload_current_length,
+                   central_header->payload_current_length);
+            uart_ctx->tag_raw.expected_offset += central_header->payload_current_length;
+            if (uart_ctx->tag_raw.expected_offset == uart_ctx->tag_raw.whole_length) {
+                uart_ctx->tag_raw.finished        = 1;
+                uart_ctx->tag_raw.expected_offset = 0;
+                logi("recevied the whole raw data that from tag,whole_length:%d\n",
+                     uart_ctx->tag_raw.whole_length);
+                dump_data(uart_ctx->tag_raw.raw, uart_ctx->tag_raw.whole_length);
+            }
+        } else {
+            loge("unexpected exception occurred\n");
+        }
+    }
+
+    if (emFunLog == central_return->fun) {
+        /* 主端的日志返回，无需改变状态 */
+        return MI_FAILURE;
+    }
+
+    if (CRspCodeSuccess == central_return->rsp_code) {
+        /* 主端命令已经收到，即将开始执行 */
+        uart_ctx->running_code_returned = 1;
+        logw("{BLE%d:UART%d} running code returned.\n", uart_ctx->central_no, uart_ctx->uart_no);
+        if (uart_ctx->current_fun != emFunDFU) {
+            return MI_FAILURE;
+        } else {
+            /**
+             * 目前主端DFU在进入bootloader之前只能返回64，网关收到64视为操作成功
+             */
+            central_return->rsp_code = CRspCodeOperationSuccess;
+            return MI_SUCCESS;
+        }
+    }
+
+    if (DRspCodeSuccess == central_return->rsp_code) {
+        /* 设备端无错误 */
+        logw("{BLE%d:UART%d} tag's success code returned...\n",
+             uart_ctx->central_no,
+             uart_ctx->uart_no);
+        uart_ctx->last_index = 0;
+        /**
+         *  设备端在最后一包会返回DRspCodeSuccess表示数据包无错误 
+         *  网关需等待DRspCodeSuccess才认为透传成功了。
+         */
+        central_return->rsp_code = CRspCodeOperationSuccess;
+        return MI_SUCCESS;
+    } else if (emFunCnnStart == uart_ctx->current_fun && uart_ctx->last_index &&
+               CRspCodeOperationSuccess == central_return->rsp_code) {
+        logw("central {BLE%d:UART%d} operation success code returned, but will waiting the tag's "
+             "real code returned.\n",
+             uart_ctx->central_no,
+             uart_ctx->uart_no);
+        uart_ctx->last_index = 0;
+        return MI_FAILURE;
+    }
+
+    return MI_SUCCESS;
+}
+
+
+github token
+
+REPO_ACCESS_TOKEN
+3eeb8097a7b8962c34fab75564684de1da0f863f
+
+TOKEN_GITHUB
+bc54ac1126d3cc9147b0eaf9881fcec2bcee029b
+
+
+curl \
+  -X POST \
+  -H "Accept: application/vnd.github.v3+json" \
+  -H 'Authorization: token 3eeb8097a7b8962c34fab75564684de1da0f863f'\
+  https://api.github.com/repos/Hzlarm/Learn-Actons/dispatches \
+  -d '{"event_type":"opened"}'
+
+
+curl \
+  -H "Accept: application/vnd.github.v3+json" \
+  -H 'Authorization: token 3eeb8097a7b8962c34fab75564684de1da0f863f'\
+  https://api.github.com/repos/Hzlarm/Learn-Actons
+  
+
+curl -i https://git.io -F url="https://raw.githubusercontent.com/Hzlarm/openwrt-list/master/depends-ubuntu-1804" -F "code=depends-ubuntu-1804"
+
+
+
+
+https://raw.githubusercontent.com/Hzlarm/openwrt-list/master/depends-ubuntu-1804
+
+
+
+iottag 开会
+添加stwd1000硬件看门狗到g1-e
+
+
+
+
+
+kerberos
+
+tftp -gr krb5-server_1.17-2_mipsel_24kc.ipk 192.168.5.251
+tftp -gr krb5-libs_1.17-2_mipsel_24kc.ipk 192.168.5.251
+tftp -gr krb5-client_1.17-2_mipsel_24kc.ipk  192.168.5.251
+
+
+#/etc/krb5.conf
+[libdefaults]                     
+        default_realm = FOOBAR.COM
+        kdc_timesync = 0                  
+        forwardable = true
+        proxiable = true
+[realms]       
+FOOBAR.COM = {       
+        kdc = kdc.foobar.com  
+        admin_server = kdc.foobar.com          
+}                                                        
+[domain_realm]                         
+        .foobar.com = FOOBAR.COM
+        foobar.com = FOOBAR.COM
+[login]              
+        krb4_convert = false        
+        krb4_get_tickets = false 
+
+
+#kdc.conf		
+[kdcdefaults]
+	kdc_ports = 750,88
+[realms]
+FOOBAR.COM = {
+	database_name = /var/lib/krb5kdc/principal
+	admin_keytab = FILE:/etc/krb5kdc/kadm5.keytab
+	acl_file = /etc/krb5kdc/kadm5.acl
+	key_stash_file = /etc/krb5kdc/stash
+	kdc_ports = 750,88
+	max_life = 8h 0m 0s
+	max_renewable_life = 1d 0h 0m 0s
+	master_key_type = des3-hmac-sha1
+	supported_enctypes = des3-hmac-sha1:normal des-cbc-crc:normal des:normal des:v4 des:norealm des:onlyrealm des:afs3
+	default_principal_flags = +preauth } 
+
+#krb5kdc/kadm5.acl
+*/admin@FOOBAR.COM *
+
+		/*
+		midir -p /var/lib/krb5kdc
+		kdb5_util -s create 
+		minew
+		*/
+
+/etc/init.d/krb5kdc start
+
+kadmin.local
+
+
+ank frank
+100012
+
+kinit frank
+
+
+
+iptables -A INPUT -p tcp --dport 88 -j ACCEPT
+
+
+http://192.168.5.55/thingoo-g1-c-iottag-v2.1.1.bin
+
+
+两边都设置了 host 同时 设置 hostname
+192.168.5.57 kdc.foobar.com kdc
+192.168.5.180 kdc-client.foobar.com kdc-client
+
+
+我做了kdc 部署 基本验证通过了， 主要的配置还是在 kdc 那边
+需要客户提供一下 kdc的  krb5.conf 
+以及  kinit 对应的 user
+
+https://www.kerberos.org/software/adminkerberos.pdf
+https://openwrt.org/docs/guide-user/services/kerberos?s[]=kerberos
+其他
+http://www.cppcns.com/os/linux/166490.html
+https://www.jb51.net/article/94875.htm
+
+
+https://blog.csdn.net/Mrerlou/article/details/114986255
+
+
+
+已完成：
+时间戳毫秒级
+添加S3S4解析
+没有BLE数据不上传。
+修复过滤问题
+优化扫描模块选择
+
+
+看门狗设置5s网关一直重启  不用管了  下个版本干掉
+
+
+
+
+1.将g1-c升级到g2所使用的的框架，固件型号命名成g1-c-advanced
+  将g1-d-orange/banana 升级到g2所使用的的框架，固件型号命名成g1-d-orange-advanced/g1-d-banana-advanced
+
+2.旧框架和g2新框架的区别：
+  2.1.openwrt_openwrt_upgrade升级的文件目录结构不同；
+  2.2.配置脚本改成c语言：
+
+    2.2.1 请求的参数在query string中，而是在body中；
+    2.2.2 请求的参数兼容性更好的json格式；
+  2.3.webui的变动：
+    2.3.1 前端采取了新的框架
+    2.3.2 学会用axure画基本的原型图
+3.如何从g1-c旧框架过渡升级到g2新框架：
+  3.1 config跟旧框架不同 
+  3.2 /etc/config/pubmsg /etc/config/thingoo/xx
+  3.3 如果有发现有这个/etc/config/pubmsg配置文件，我们强制恢复出厂设置
+
+
+
+1.新一个openwrt仓库名字暂为gateway_openwrt_19.07_g1_advanced（共用），
+  gateway_openwrt_19.07_g1_advanced跟gateway_openwrt_19.07_g2还是有很大的区别；
+  主要不同的是gateway_openwrt_19.07_g2有两路LAN口，g1只有一个WAN口
+
+2. g1-c-advanced的package命名为gateway_openwrt_19.07_package_g1-c-advanced
+   g1-d-orange-advanced的package命名为gateway_openwrt_19.07_package_g1-d-orange-advanced
+   g1-d-banana-advanced的package命名为gateway_openwrt_19.07_package_g1-d-banana-advanced
+  2.1 先移植package
+
+
+3. thingoo-webui要基于g2新版本的thingoo-webui进行修改
+   3.1 用axure画原型图
+
+unix风格，不要驼峰
+
+
+
+
+1. openwrt仓库 为 gateway_openwrt_19.07_g1-advanced，你们移植就用这个openwrt仓库就行
+   以下是g1-d-pro初步移植到新框架的的package仓库和webui仓库（还没验证）
+gateway_openwrt_19.07_package_g1-d-pro-advanced
+thingoo-webui_19.07_g1-d-advanced
+
+2. g2的仓库没有LED配置的接口，这个接口已经在g1-d-pro上面的仓库实现了（还没有测试），你们移植时，leds配置就跟这个一样
+3. 移植时，Automatic reboot 和timing reboot全部不要了
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

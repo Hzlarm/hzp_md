@@ -1,0 +1,176 @@
+/dts-v1/;
+
+/include/ "mt7628an.dtsi"     //引用文件
+
+/ { /*根节点*/
+	compatible = "mediatek,thingoo", "mediatek,mt7628an-soc";   /*这些字符串列表被操作系统用来选择用哪一个driver来驱动该设备*/
+	model = "Thingoo-GW";  /*此字符串会显示在 单板status->system->model 页面中*/
+第一步，先构建一个计算机的基本架构，即一个有效设备树的最小架构。在这一步，要唯一地标志这台计算机。
+root结点"/"的compatible 属性定义了系统的名称，Linux内核透过root结点"/"的compatible 属性即可判断它启动的是什么machine。
+在.dts文件的每个设备，都有一个compatible属性，compatible属性用户驱动和设备的绑定。
+compatible属性是一个字符串的列表，列表中的第一个字符串表征了结点代表的确切设备，形式为
+"<manufacturer>,<model>"，其后的字符串表征可兼容的其他设备。可以说前面的是特指，后面的则涵盖更广的范围。
+
+
+	chosen {
+		bootargs = "console=ttyS0,57600";
+	};
+
+	memory@0 {
+		device_type = "memory";
+		reg = <0x0 0x8000000>;
+	};
+
+	pinctrl {
+		state_default: pinctrl0 {
+			gpio {
+				ralink,group = "gpio";
+				ralink,function = "gpio";
+			};
+			perst {
+				ralink,group = "perst";
+				ralink,function = "gpio";
+			};
+			refclk {
+				ralink,group = "refclk";
+				ralink,function = "gpio";
+			};
+			i2s {
+				ralink,group = "i2s";
+				ralink,function = "i2s";
+			};
+			spis {
+				ralink,group = "spis";
+				ralink,function = "gpio";
+			};
+			wled_an {
+				ralink,group = "wled_an";
+				ralink,function = "wled_an";
+			};
+			ephy_p1 {
+				ralink,group = "ephy_p1";
+				ralink,function = "gpio";
+			};
+			ephy_p2 {
+				ralink,group = "ephy_p2";
+				ralink,function = "gpio";
+			};
+			ephy_p3 {
+				ralink,group = "ephy_p3";
+				ralink,function = "gpio";
+			};
+			ephy_p4 {
+				ralink,group = "ephy_p4";
+				ralink,function = "gpio";
+			};
+			wdt {
+				ralink,group = "wdt";
+				ralink,function = "gpio";
+			};
+		};
+	};
+
+	palmbus@10000000 {  /*寄存器映射位置，即0x1000,0000见datasheet，SYSCTL，Module name: SYSCTL Base address: (+10000000h)
+		spi@b00 {	相对于palmbus偏移b00	Module name: SPI Base address: (+10000B00h)
+			status = "okay";     /*状态为okay，表示此spi组可用*/
+
+			pinctrl-names = "default";    /*描述spi的pin控制逻辑*/
+			pinctrl-0 = <&spi_pins>, <&spi_cs1_pins>;    见mt7628an.dtsi
+
+			m25p80@0 {  /*相对于SPI的偏移*/  spi flash芯片m25p80驱动
+				#address-cells = <1>;
+				#size-cells = <1>;
+				compatible = "w25q128";
+				reg = <0 0>;
+				linux,modalias = "m25p80", "w25q128";
+				spi-max-frequency = <40000000>;  此处设置spi使用的最高频率/*Maximum SPI clocking speed of device in Hz；原来值是10000000，比驱动要求的值小；会导致Flash加载失败*/
+				m25p,chunked-io = <31>;
+
+			/*如下分区只针对 16M 大小；当bootloader中没有设定分区定义时，内核就据此来划分Flash分区了*/ 
+				partition@0 {
+					label = "u-boot";  /*此分区的标识，会体现在 /proc/mtd文件中*/
+					reg = <0x0 0x30000>;   /*此分区的偏移量和大小*/  192k
+				};
+
+				partition@30000 {
+					label = "u-boot-env";
+					reg = <0x30000 0x10000>;    				64k
+				};
+
+				factory: partition@40000 {
+					label = "factory";
+					reg = <0x40000 0x10000>;  					64k
+				};
+
+				partition@50000 {
+					label = "firmware";
+					reg = <0x50000 0x0fb0000>;  /*这是kernel+rootfs的合计*/  15.6875M 16064k 
+				};
+			};
+
+			spidev@1 {
+				#address-cells = <1>;
+				#size-cells = <1>;
+				compatible = "spidev";
+				reg = <1 0>;
+				spi-max-frequency = <40000000>;
+			};
+		};
+
+
+		uart1@d00 {
+			status = "okay";
+		};
+
+		uart2@e00 {
+			status = "okay";
+		};
+
+	};
+
+	ethernet@10100000 {
+		mtd-mac-address = <&factory 0x28>;    /*在分区"factory"的偏移位置0x28,对应LAN侧的MAC地址*/ mac地址在10040028
+	};
+
+	sdhci@10130000 {
+		status = "okay";
+		mediatek,cd-low;
+	};
+
+    gpio-leds {
+        compatible = "gpio-leds";
+        wifi {
+            label = "mediatek:orange:wifi";
+            gpios = <&wgpio 0 0>;  
+            default-state = "on";                 
+        };
+  
+    };
+
+
+    gpio-keys-polled {
+        compatible = "gpio-keys-polled";
+        #address-cells = <1>;
+        #size-cells = <0>;
+        poll-interval = <20>;  /*用于在gpio-button-hotplug中的轮训间隔设置；单位是ms*/
+        wps {
+            label = "reset";
+            gpios = <&gpio1 6 1>; gpio38 &gpio1 6引用了gpio1节点，故此处含义为gpio1_6这个引脚；最后一个参数1则代表低电平有效，0则为高电平有效
+            linux,code = <0x211>;
+			/*当按下reset按键后，向内核发出的code；这些code，用于input_event上报的code代码，
+比如这里的0x211 就对应KEY_RESTART；而在gpio-button-hotplug.c中， BH_MAP(KEY_WPS_BUTTON,  "wps")*/
+具体含义见input.h #define KEY_WPS_BUTTON        0x211   /* WiFi Protected Setup key */
+        };
+    };
+
+    wgpio: gpio-wifi {
+        #address-cells = <1>;
+        #size-cells = <0>;
+     
+        compatible = "mediatek,gpio-wifi";
+        gpio-controller;
+        #gpio-cells = <2>;
+     
+    };
+
+};

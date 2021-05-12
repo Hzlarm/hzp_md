@@ -107,3 +107,4 @@ show environment [varname] 查看环境变量；
 - Ctrl + L：刷新窗口
 
 - quit：简记为 q ，退出gdb
+

@@ -274,58 +274,6 @@ ESL云平台：hzp123456
 192.168.0.254:5080
 192.168.5.237:5080
 
-唤醒时间30s
-2 by 2
-uart.c 1329
-action.c 299 186
-
-
-
-
-uboot
-1010 14->5
-
-
-config.mk
-12
-#BOARD_RESET_MODE = GPIO14_RESET_MODE取消注释
-
-
-
-vi /etc/rc.local
-echo "rc.local  ------------->  run reboot script" > /dev/console
-sh /root/reboot &
-
-
-vi /root/reboot
-echo "sleep30" > /dev/console
-sleep 30
-echo "auto rebooting" > /dev/console
-reg w 0x10000060 0x55154045
-reg w 0x10000600 0x820
-reg w 0x10000640 0x20
-
-
-mv /root/reboot  re
-
-reg r 0x10000060
-寄存器 0x10000060 的第21、20位00代表I2C，01代表GPIO5
-0x55054045   --->   0x55154045   
-寄存器0x10000600控制GPIO31-0的模式是否为输出，设置GPIO5为输出模式(原先GPIO11就是输出模式)
-
-reg r 0x10000640
-
-reg r 0x10000600
-add:0x10000600 = 0x800   GPIO11是LED旋转灯
-
-reg w 0x10000600 0x820	 GPIO5硬复位开关
-
-reg w 0x10000060 0x55154045 
-
-
-
-reboot: Restarting system
-
 
 
 
@@ -392,172 +340,30 @@ printf( "\n ********** for_cnt is %d ********* wps_pressed_cnt is %d!!\n\n", for
 
 
 
-	寄存器 10000060 的第21、20位00代表I2C，01代表GPIO. GPIO#5与GPIO#4
-	0x55054045   --->   0x55154045
-	reg r 0x10000060
 
-	寄存器 10000600 控制GPIO31-0的模式是否为输出，设置GPIO#5,GPIO#4为输出模式(原先GPIO#11就是输出模式)
-	0x800   --->   0x830
-	reg r 0x10000600
-	uboot中已经设置GPIO#5输出模式，需要手动设置GPIO#4为输出模式
-reg w 0x10000600 0x830
-
-	寄存器 10000620 表示GPIO31-0输入模式时输入的值或者控制输出值。
-	reg r 0x10000620
-
-	寄存器 10000630 控制GPIO31-0 输出置位	WO
-	需要拉高 GPIO#5 使能看门狗然后 GPIO#4 方波喂狗
-reg w 0x10000630 0x20
-
-
-	寄存器 10000640 控制GPIO31-0 输出清零	WO
-reg w 0x10000640 0x10
-
-/*********************/
-开启看门狗并且喂狗
-/*********************/
-vi wdt
-#!/bin/sh
-
-reg w 0x10000630 0x20
-
-while :
-do
-reg w 0x10000640 0x10
-usleep 500000
-reg w 0x10000630 0x10
-done
-
-/*********************/
-关闭看门狗
-/*********************/
-vi diswdt
-#!/bin/sh
-
-reg w 0x10000640 0x20
-ps |grep wdt |grep -v "grep" | awk '{print $1}'| xargs kill -9 2>/dev/null
-/*********************/
-
-	
-uboot lib_mips/board.c	1440
-	/* add by minew*/
-	//set I2C_MODE : I2C_SCLK-->GPIO#4  I2C_SD-->GPIO#5
-	RALINK_REG(RT2880_GPIOMODE_REG)&=~(1<<21); 
-	RALINK_REG(RT2880_GPIOMODE_REG)|=1<<20; 
-	//set GPIO4 GPIO5 output mode
-	RALINK_REG(RT2880_REG_PIODIR)|=1<<4; //output mode
-	RALINK_REG(RT2880_REG_PIODIR)|=1<<5; //output mode
-	printf("************************************\n");
-	printf("pull low GPIO5 to disable stwd100!!!\n");
-	printf("************************************\n");
-	RALINK_REG(RT2880_REG_PIODATA)&=~(1<<5);
-
-
-/*********************/
-开启看门狗并且喂狗	c run_stwd100
-/*********************/
-vi run_stwd100
-#!/bin/sh
-###i2c or gpio?
-REG_I2C_MODE=$(reg r 0x10000060 | awk {'print $3'})
-#echo $REG_I2C_MODE >/dev/console
-let "VAL=$REG_I2C_MODE | 1<<20"
-let "VAL=$VAL & ~(1<<21)"
-HEOP_I2C_MODE=$(printf "0x%x" $VAL) 
-#echo $HEOP_I2C_MODE >/dev/console
-###reg w 0x10000060 $HEOP_I2C_MODE 
-if [ "$REG_I2C_MODE"x = "$HEOP_I2C_MODE"x ]; then
-	#echo "gpio#4&5 is gpio" >/dev/console
-	#gpio4 and gpio5 out mode?
-	REG_GPIO_MODE=$(reg r 0x10000600 | awk {'print $3'})
-	#echo $REG_GPIO_MODE >/dev/console
-	let "VAL=$REG_GPIO_MODE|0x30"
-	HOPE_GPIO_MODE=$(printf "0x%x" $VAL) 
-	#echo $HOPE_GPIO_MODE >/dev/console
-	if [ "$REG_GPIO_MODE"x != "$HOPE_GPIO_MODE"x ]; then
-		#echo "gpio#4&5 is no out mode!!!" >/dev/console
-		reg w 0x10000600 $HOPE_GPIO_MODE
-	#else 
-		#echo "gpio#4&5 is out mode" >/dev/console
-	fi
-	#pull high gpio5 start stwd100_watchdog
-	reg w 0x10000630 0x20
-	while :
-	do
-	#gpio4 sends square wave to feed stwd100_watchdog
-		reg w 0x10000640 0x10
-		usleep 500000
-		reg w 0x10000630 0x10
-		usleep 500000
-	done
-else 
-	echo -e "\033[;33;1m  gpio#4&5 is i2c!!! exited  \033[0m" >/dev/console
-	exit
-fi
-
-/*********************/
-关闭看门狗	
-/*********************/
-vi stop_stwd100
-#!/bin/sh
-stwd100_watchdog_id=$(ps |grep run_stwd100 |grep -v "grep" | awk '{print $1}')
-if [ x$stwd100_watchdog_id != "x" ]; then
-	echo -e "\033[;33;1m   run_stwd100:$stwd100_watchdog_id will killed   \033[0m"  >/dev/console
-	#pull low gpio5 stop stwd100_watchdog
-	reg w 0x10000640 0x20
-	kill -9 $stwd100_watchdog_id 2>/dev/null
-fi
-
-/*********************/
-开机自启看门狗	
-/*********************/
-#vi /etc/rc.local
-run_stwd100 &
-echo -e "\033[;33;1m   run_stwd100 started  \033[0m"  >/dev/console
-
-
-
-uboot-add_stwd.bin
-
-uboot-random-test-stwd.bin
-
-
-ce e6 
-s4 guolv 
-ce wdt
-xie c wdt
+./scripts/feeds search  krb5-client
 
 
 
 
 
 
+基于这个需求：首先我们以前没有接触过，也没有别的客户提到过。
+其次最近时间比较忙，所以即使做的话，会晚一点，也不一定能实现你们的目的。你们要有心理了准备。
+只能说可以尝试一下。如果你们同意的话。
+目前我有一个疑问，你们应该清楚kerberos的工作原理。你们确定client通过kerberos与server通信，与添加proxy没有任何冲突吧？proxy是没有KDC的key的.
+另外你可以问一下你们的客户不是正在使用Kerberos么？客户端如何配置才能通过他们的KDC与server通信。
+也就是我们G1这边需要做些什么，我就不需要考虑搭建测试环境以及其他方面了，顺便可以测试一下，是否可以实现。
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+我在G1上添加了krb5-client (1.17-2)，以下命令需要怎么执行？
+kdestroy
+kvno
+klist
+ksu
+kpasswd
+krb5-send-pr
+kinit
+只有测试通过了，我才有必要将它彻底适配到G1中。
 
 
 

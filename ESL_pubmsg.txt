@@ -1,45 +1,51 @@
-	process_options 	本地测试使用
+	process_options 	本地测试使用。把所有附加参数解析并封装到 cmd_line 结构体中
 
 	init_main_context	初始化	
 		开辟 mainContext 内存，ble_map对应的gpio操作命令 /etc/init.d/ble39、40、45  start、stop、restart
 
 	get_gateway_mac		获取网关MAC地址
 
-	init_proto_context	初始化
-		开辟 protoContext protoCtx->databuf 内存
+	init_proto_context	初始化proto上下文
+		开辟 proto_ctx 以及 proto_ctx->databuf 内存
 		init_leds_context		初始化led上下文 打开ws2812-draiveris设备
 		init_mqtt_context		初始化mqtt上下文
 		init_http_context		初始化http上下文
-		init_compress_context	初始化压缩上下文 LZO压缩算法
-		init_cmdstate_context	初始化命令状态上下文(cmdStateContext *cmdStateCtx:{struct cds_lfht *cmdCnnStateHT、*cmdScanStateHT 、*bleDataHT})
-			cmdStateCtx->cmdScanStateHT = cds_lfht_new(16, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
-			cmdStateCtx->cmdCnnStateHT = cds_lfht_new(16, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
-			cmdStateCtx->bleDataHT = cds_lfht_new(16, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
-			cds_lfht_new 函数分配一个新的哈希表并返回指向它的指针.可在在初始化RCU之前,调用cds_lfht_new
+		init_compress_context	初始化压缩上下文 LZO压缩算法(http://www.oberhumer.com/opensource/lzo/download/lzo-2.10.tar.gz  sha256sum.exe lzo-2.10.tar.gz)
+		init_state_context		初始化 cmd state 上下文(state_context_t *ctx:{struct cds_lfht *cnn_state_ht、*scan_state_ht、*ble_data_ht、*url_content_ht、seed})
+			ctx->scan_state_ht = cds_lfht_new(16, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+			ctx->cnn_state_ht = cds_lfht_new(16, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+			ctx->ble_data_ht = cds_lfht_new(16, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+			ctx->url_content_ht = cds_lfht_new(16, 1, 0, CDS_LFHT_AUTO_RESIZE | CDS_LFHT_ACCOUNTING, NULL);
+			使用 cds_lfht_new 函数分配可自动调整大小的哈希表.可在在初始化RCU之前,调用cds_lfht_new,
 			struct cds_lfht *cds_lfht_new(unsigned long init_size,unsigned long min_nr_alloc_buckets,unsigned long max_nr_buckets,int flags,pthread_attr_t *attr)
-		reload_uci
-		init_cmdlist_context(cmdListContext *cmdListCtx{struct cds_list_head cmdListHead、current_left_cnt(醒来未被连接的BLE)、auto_release_limit、inWaking}):初始化cmd链表上下文
-			CDS_INIT_LIST_HEAD(cmdListCtx *cmdListHead)；
-			CDS_INIT_LIST_HEAD (ptr):初始化一个cds_list_hea
-		attach_gpio_to_uart		gpio与uart关联
+													初始大小			最小									最大(0表无穷)					选项		调整工作线程的线程创建属性(或NULL，使用默认属性)				
+		reload_uci	加载/etc/config/pubmsg 配置
+		init_list_context		初始化 cmd list 上下文(list_context_t *ctx{(cds_list_head) cmd_list_head、link_list_head/*!< list that store link */  active_cnt auto_release in_waking}):
+								active_cnt： 醒来未被连接过的标签 	auto_release：防止问题，导致网关无法进行下一步的唤醒 	 in_waking ：控制最多只有一个BLE模块在做唤醒的功能
+			CDS_INIT_LIST_HEAD(&ctx->cmd_list_head);
+			CDS_INIT_LIST_HEAD(&ctx->link_list_head);
+			函数 CDS_INIT_LIST_HEAD (ptr):初始化  cds_list_head 链表指针
+		init_mempool_context	初始化 mempool 上下文
+		attach_gpio_to_uart		gpio与uart关联 gpio39、40、45控制三个 蓝牙模块的电源
 			load_usb_devices 获取usb设备以及usb个数保存在 mainCtx->usbDevices、mainCtx->uartNum
 			init_uart_context(3次) 每次初始化一个uart设置相关参数，创建3个线程。共计9个线程
-	--->		uart_poll_thread	从uart读取数据写入到队列中	打印非扫描状态的 BLE 模块的数据
+	-3->		uart_poll_thread	从uart读取数据写入到 uart_ctx->queue 队列中,	并且 打印非扫描状态的 BLE 模块的数据
 				
-	--->		uart_rsp_thread		从队列中读取数据，没有则打印 uartNo:x,len<0: -1
+	-3->		uart_rsp_thread		从 uart_ctx->queue 队列中读取数据，没有则打印 uartNo:x,len<0: -1
 					dispatch_rsp_result		 		处理响应结果
-						check_rsp_format			检查响应数据格式是否正确
-						get_rsp_parameter			获取响应参数
+						check_rsp_format			检查响应数据格式是否正确  (主端模块头部 CH) central_header 数据结构长度、版本号保留未查、前缀0xAA、整个包长度、CRC32校验码、当前包数据部分的长度、ext长度+central_header=datalen
+						get_central_return_status	获取主端返回的状态
 						handle_scan_rsp_status		处理扫描响应状态
+						
 							。。。。			如果是初始化就 handle_init_rsp_status ，否则就 handle_normal_rsp_status 处理正常响应状态
 						release_uart_status			释放uart状态
 						handle_data_domain			处理扫描广告包，根据 function lists 中不同的function
 							handle_ble_data			将ble数据封装为json 
-								update_ble_data		更新BLE设备信息到 cmdStateContext 表中，通过 mac 与seed 找到hash值，然后用 rcu系列函数 从 cmdStateCtx.bleDataHT 提取 iter ，然后找到 对应的节点
+								update_ble_data		更新BLE设备信息到 state_context_t 表中，通过 mac 与seed 找到hash值，然后用 rcu系列函数 从 ctx.ble_data_ht 提取 iter ，然后找到 对应的节点
 									search_scan_state_to_update	 		对第一次接收到广播包的数据进行记录  修改最近一次收到该广播包的时间戳 并更新 该设备被唤醒的状态 以及记录唤醒未被连的数目，打印被唤醒 记录时间点
 								write_to_mempool	写入到 memPoolCtx 内存池中，附加BLE no信息
 				
-	--->		uart_ctrl_thread	通过uart发送控制命令信息到BLE模块，BLE-->ESL
+	-3->		uart_ctrl_thread	通过uart发送控制命令信息到BLE模块，BLE-->ESL
 					add_scan_all_time_to_list 		初始化 CmdSubListHeadNode， 并添加scan 命令到链表中
 						product_ScanStart_cmd		序列化扫描启动命令，NEW_SUB_LIST_NODE、INIT_SUB_LIST_NODE、INIT_EXT_MDU、INIT_FIXED_HEADER、PRINT_CMD_DATA
 							add_cmd_to_sub_list		添加scan start cmd节点到双链表 sub_list_head 的尾部-
@@ -74,6 +80,36 @@
 
 
 
+
+线程堆栈默认都是8M
+
+
+
+
+
+  -h, --help
+  -f, --fixed-uart                          采用固定模块来唤醒或者连接，方便主端人员测试
+  -m, --mac   <mac1mac2...>                 指定mac地址列表
+  -M, --MAC   <mac1~mac2>                   指定mac地址范围
+  -H, --HEX   <HEX-FORMAT>                  以十六进制格式指定原始数据
+  -C, --COMM  <HEX-FORMAT>                  以十六进制格式指定公共数据
+  -a, --action                              dfu:升级主端		ota：升级tag		image：发送图片32		fragment：发送碎片18		transmit：BLE连接透传		scan：扫描		radio：2.4Gradio透传
+  -e, --extra <key1=value1;key2=value2..>   size：tag大小，1.54(0)	2.13low(1)		2.13high(2)		2.66(3)		2.9(4)		3.7(5)		4.2(6)		5.83(7) 	7.5(8)		11.6(9)
+		version：指定版本		color:颜色，t(彩色)or f		command：命令id		src_from：auto or hfs or local		id_type：0groupid，1mac		adv_param：0/1/2		fixed_len：固定区块长度(0/1)
+		package：指定图片编号	refresh：立刻刷新图像(0/1)		region:图像区域编号	radio_legacy：传统的方式radio调度默认0 	radio_len：默认160		radio_double：使用双蓝牙模块进行唤醒默认0
+		
+
+----------------------------TL;DR-----------------------
+dfu:
+   pubmsg -a dfu -e version=vx.x.x 
+ota<BCON>:
+   pubmsg -a ota -m/M ac233fc0xxxx -e "version=vx.x.x;command=25;id_type=1;adv_param=0;fixed_len=0" 
+image<BCON>:
+   pubmsg -a image -m/M ac233fc0xxxx -e "size=1;color=t/f;package=1;command=25;id_type=1;adv_param=0;fixed_len=0;refresh=1;region=0" 
+transimit<BCON>:
+   pubmsg -a transmit -m/M ac233fc0xxxx -H <device data in HEX>  -e "size=1;color=t/f;command=25;id_type=1;adv_param=0;fixed_len=0" 
+radio<2.4G>:
+   pubmsg -a radio -m/M ac233fc0xxxx [-H <special params chunk in HEX>] [-C <common params chunk in HEX>]  -e "radio_len=160;radio_legacy=0;radio_double=0;command=25;id_type=1;adv_param=0;fixed_len=0" 
 
 
 		

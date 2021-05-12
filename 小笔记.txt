@@ -10,7 +10,7 @@ python3 -m http.server 8888
 
 linux 命令echo 参数-n表示不换行-e表示开启转义   转义字符\c代表后面的不再输出
 
-find . -type f -exec grep -inrH "udelay" {} \; 2>/dev/null
+find . -type f -exec grep -inrH "ramips_borad_name" {} \; 2>/dev/null
 
 shell 	${}取变量无歧义可以不加{}
 		$()执行命令
@@ -598,4 +598,75 @@ Ctrl + F查找，选择替换，替换栏空着，查找目标栏输入如下
 ^(?!.*nodrop.*)$
 删除不包含 nodrop 字符的行，并去除该空格行
 ^(?!.*nodrop).*\r?\n
+^(?!.*nodrop.*)\r?\n
+
+5. Linux下的dd命令，偶的最爱
+
+1. 制作软盘镜像文件diska.img
+命令： dd if=/dev/zero of=diska.img bs=512 count=2880
+2. 复制boot.bin到boot.img中
+命令： dd if=boot.bin of=boot.img bs=512 count=1
+3. 复制diska.img中从第512字节往后的内容添加到boot.img中（这是dd最出彩的部分）
+命令： dd if=diska.img of=boot.img skip=1 seek=1 bs=512 count=2879
+
+
+dd if=/dev/shm/test of=/data/sdb/test bs=1G oflag=append conv=notrunc 
+
+
+(dd if=uboot ;dd if=uboot-env; dd if=factory; dd if=firmware) > all.bin
+df-h  看到/tmp 目容量
+(dd if=/dev/mtd0; if=/dev/mtd1; if=/dev/mtd2; if=/dev/mtd3) > all.bin
+//下面这个没问题
+(dd if=/dev/mtdblock0; dd if=/dev/mtdblock1; dd if=/dev/mtdblock2; dd if=/dev/mtdblock3;) > all.bin   
+hexdump -Cv testfile -s skip -n number
+
+
+
+debug
+
+make V=s package/thingoo/pubmsg-g1-d-orange/compile STRIP=/bin/true CONFIG_DEBUG=y
+
+gdbserver_8.3.1-1_mipsel_24kc.ipk
+pubmsg-g1-d-orange_1.0_mipsel_24kc_g.ipk
+
+gdbserver --once --remote-debug  :9000 /usr/bin/pubmsg 
+
+./scripts/remote-gdb 192.168.5.84:9000 ./build_dir/target-mipsel_24kc_musl/pubmsg-g1-d-orange/pubmsg
+
+
+
+
+
+openwrt/gateway_openwrt_19.07_g1/build_dir/target-mipsel_24kc_musl/pubmsg-g1-d-orange
+
+staging_dir/toolchain-mipsel_24kc_gcc-7.4.0_musl/bin/mipsel-openwrt-linux-objdump
+
+
+makefile -O2 改为 -O0
+
+
+编程器 选择芯片型号。插上芯片会自定识别 貌似
+步骤： 
+先擦除 要不然会出错
+加载文件
+编程
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

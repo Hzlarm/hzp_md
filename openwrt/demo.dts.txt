@@ -1,0 +1,183 @@
+/ {  
+
+    compatible = "acme,coyotes-revenge";  
+第一步，先构建一个计算机的基本架构，即一个有效设备树的最小架构。在这一步，要唯一地标志这台计算机。
+root结点"/"的compatible 属性定义了系统的名称，Linux内核透过root结点"/"的compatible 属性即可判断它启动的是什么machine。
+
+    #address-cells = <1>;  子结点需要一个cell描述地址
+
+    #size-cells = <1>;  子结点需要一个cell描述长度
+
+    interrupt-parent = <&intc>;  root结点指定中断控制器intc  标识此设备节点属于哪一个中断控制器，如果没有设置这个属性，会自动依附父节点的；
+
+在.dts文件的每个设备，都有一个compatible属性，compatible属性用户驱动和设备的绑定。
+compatible属性是一个字符串的列表，列表中的第一个字符串表征了结点代表的确切设备，形式为
+"<manufacturer>,<model>"，其后的字符串表征可兼容的其他设备。可以说前面的是特指，后面的则涵盖更广的范围。
+
+    cpus {  
+父类的address-cells和size-cells决定了子类的相关属性要包含多少个cell，如果子节点有特殊需求的话，可以自己再定义，这样就可以摆脱父节点的控制。
+address-cells决定了address1/2/3包含几个cell，size-cells决定了length1/2/3包含了几个cell
+        #address-cells = <1>;  
+
+        #size-cells = <0>;  
+cpu子结点的命名，它们遵循的组织形式为：<name>[@<unit-address>]，<>中的内容是必选项，[]中的则为可选项。
+name是一个ASCII字符串，用于描述结点对应的设备类型，如网卡适配器对应的结点name宜为ethernet，表示这个是网卡。
+如果一个结点描述的设备有地址，则应该给出@unit-address。多个相同类型设备结点的name可以一样，只要unit-address不同即可
+设备的unit-address地址也经常在其对应结点的reg属性中给出。
+        cpu@0 {  
+
+            compatible = "arm,cortex-a9";  
+
+            reg = <0>;  
+
+        };  
+
+        cpu@1 {  
+
+            compatible = "arm,cortex-a9";  
+
+            reg = <1>;  
+
+        };  
+
+    };  
+
+  
+
+    serial@101f1000 {  串口
+
+        compatible = "arm,pl011";  
+
+        reg = <0x101f1000 0x1000 >;  地址0x101f1000，长度 0x1000
+reg意为region，区域。格式为：reg =<address1 length1 [address2 length2] [address3 length3]>;
+
+        interrupts = < 1 0 >;  
+
+    };  
+
+  
+
+    serial@101f2000 {  串口
+
+        compatible = "arm,pl011";  
+
+        reg = <0x101f2000 0x1000 >;  
+
+        interrupts = < 2 0 >;  
+
+    };  
+
+  gpio@101f3000 {  GPIO控制器
+
+        compatible = "arm,pl061";  
+
+        reg = <0x101f3000 0x1000  
+
+               0x101f4000 0x0010>;  
+
+        interrupts = < 3 0 >;  
+
+    };  
+
+  
+
+    intc: interrupt-controller@10140000 {  中断控制器
+
+        compatible = "arm,pl190";  
+
+        reg = <0x10140000 0x1000 >;  
+
+        interrupt-controller;  这个node接收中断信号
+
+        #interrupt-cells = <2>;   2个cell做中断描述符
+
+    };  
+
+  
+
+    spi@10115000 {  spi控制器
+
+        compatible = "arm,pl022";  
+
+        reg = <0x10115000 0x1000 >;  起始地址为0x10115000，长度为0x1000
+
+        interrupts = < 4 0 >;  
+
+};  
+
+  external-bus {  external bus桥
+
+        #address-cells = <2>  子结点需要两个cell描述地址，片选,偏移
+
+        #size-cells = <1>;  子结点需要一个cell描述长度
+
+ranges属性为一个地址转换表。表中的每一行都包含了子地址、父地址、在自地址空间内的区域大小。他们的大小（包含的cell）分别由子节点的address-cells的值、父节点的address-cells的值和子节点的size-cells来决定。
+        ranges = <0 0  0x10100000   0x10000     // Chipselect 1, Ethernet  片选0 0，地址0x10100000 ，长度0x10000  
+0 0 两个cell，由子节点external-bus的address-cells=<2>决定；
+0x10100000 一个cell，由父节点(/)的address-cells=<1>决定；
+0x10000 一个cell，由子节点external-bus的size-cells=<1>决定。
+最终第一行说明的意思就是：片选0，偏移0（选中了网卡），被映射到CPU地址空间的0x10100000~0x10110000中，地址长度为0x10000。
+
+                  1 0  0x10160000   0x10000     // Chipselect 2, i2c controller  
+
+				  2 0  0x30000000   0x1000000>; // Chipselect 3, NOR Flash  
+
+  
+
+        ethernet@0,0 {  
+
+            compatible = "smc,smc91c111";  
+
+            reg = <0 0 0x1000>;  
+
+            interrupts = < 5 2 >;  
+
+        };  
+
+ 
+
+         i2c@1,0 {  
+i2c控制器模块下的rtc模块。因为I2C设备只是被分配在一个地址上，不需要其他任何空间，所以只需要一个address的cell就可以描述完整，不需要size-cells
+            compatible = "acme,a1234-i2c-bus";  
+
+            #address-cells = <1>; 重新写 address-cells rtc需要一个cell描述地址
+
+            #size-cells = <0>;  重新写 size-cells rtc不需要cell描述长度
+
+            reg = <1 0 0x1000>;  
+
+            rtc@58 {  
+
+                compatible = "maxim,ds1338";  
+
+                reg = <58>;  只需要一个address cell，不需要cell再描述长度
+
+                interrupts = < 7 3 >;  
+
+            };  
+
+        };  
+
+        flash@2,0 {  
+
+            compatible = "samsung,k8f1315ebm", "cfi-flash";  
+
+            reg = <2 0 0x4000000>;  
+
+        };  
+
+    };  
+
+};  
+
+
+描述中断连接需要四个属性：
+
+1. interrupt-controller 一个空属性用来声明这个node接收中断信号；
+
+2. #interrupt-cells 这是中断控制器节点的属性，用来标识这个控制器需要几个单位做中断描述符；
+
+3. interrupt-parent 标识此设备节点属于哪一个中断控制器，如果没有设置这个属性，会自动依附父节点的；
+
+4. interrupts 一个中断标识符列表，表示每一个中断输出信号。
+如果有两个，第一个是中断号，第二个是中断类型，如高电平、低电平、边缘触发等触发特性。对于给定的中断控制器，应该仔细阅读相关文档来确定其中断标识该如何解析。

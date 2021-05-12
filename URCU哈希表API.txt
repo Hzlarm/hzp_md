@@ -1,3 +1,7 @@
+### urcu记录
+
+[urcu 源码包](https://lttng.org/files/urcu/)
+
 每个进入读侧临界区的线程都需要事先通过 rcu_register_thread() 接口进行注册，退出时调用 rcu_unregister_thread() 接口取消注册。
 
 
@@ -18,12 +22,12 @@ max_nr_buckets：指定哈希桶的最大数量，该数量必须再次为2的�
 flags：指定哈希表选项。零值采用默认值，否则，如果需要，可以使用按位或（'|'）组合来指定以下标志：
 	CDS_LFHT_AUTO_RESIZE：自动调整哈希表的大小。注意，cds_lfht_resize()可以调用该 函数来手动调整表的大小。
 	CDS_LFHT_ACCOUNTING：维护表中节点数的计数。要启用收缩哈希表，必须使用此标志。因此CDS_LFHT_AUTO_RESIZE允许哈希表增长，
-			但是“ CDS_LFHT_AUTO_RESIZE | 还需要 CDS_LFHT_ACCOUNTING 来允许散列表缩小。
-attr：pthread_create() 调整大小工作线程的可选线程创建属性（或NULL使用默认属性）。attr实时应用程序中有一个重要的用途，
-			在该应用程序中，设置调整大小的工作线程的优先级很重要，这样可以避免无休止的cds_lfht_add()调用使这些线程饿死。
-			毕竟，这种饥饿可能导致哈希表太小，无法具有链表的查找性能。请注意，attr除非或直到实际调整哈希表的大小，否则将忽略它。
+			但是 CDS_LFHT_AUTO_RESIZE  还需要 | CDS_LFHT_ACCOUNTING 来允许散列表缩小。
+attr：可选的pthread_create()调整工作线程的线程创建属性(或NULL，使用默认属性)。attr的一个重要用途是在实时应用程序中，
+		设置resize工作线程的优先级是很重要的，这样可以避免这些线程被无休止的cds_lfht_add()调用耗尽。毕竟，
+		这种饥饿可能导致一个太小的哈希表具有链表的查找性能。注意，除非实际调整了哈希表的大小，否则attr将被忽略。
 
-调用cds_lfht_new（）的线程不需要注册为RCU读取器，这意味着允许在很早（例如，在初始化RCU之前）调用cds_lfht_new（）。
+调用 cds_lfht_new（）的线程不需要注册为RCU读取器，这意味着允许在很早（例如，在初始化RCU之前）调用 cds_lfht_new（）。
 
 
 /******************************************************/
@@ -353,8 +357,8 @@ URCU提供了两种类型的RCU保护列表，这些列表是从GNU libc实现�
 
 循环cds_list_head列表上的操作是：
 
-CDS_INIT_LIST_HEAD(ptr)：cds_list_head从可执行代码初始化结构。
-CDS_LIST_HEAD_INIT(name)：用于cds_list_head结构声明的初始化程序。使用示例：
+CDS_INIT_LIST_HEAD(ptr)：cds_list_head 从可执行代码初始化结构。
+CDS_LIST_HEAD_INIT(name)：用于cds_list_head 结构声明的初始化程序。使用示例：
 struct cds_list_head my_list = CDS_LIST_HEAD_INIT(my_list);
 CDS_LIST_HEAD(name)：声明cds_list_head结构并将其初始化为全局变量或堆栈上的变量。
 void cds_list_add(struct cds_list_head *newp, struct cds_list_head *head)：将元素添加newp到列表的开头head。
@@ -398,29 +402,3 @@ void cds_hlist_del_rcu (struct cds_hlist_node *elem)：类似于cds_hlist_del()�
 cds_hlist_for_each_entry_rcu (entry, pos, head, member)：类似于cds_hlist_for_each_entry()，但允许并发读者。
 cds_hlist_for_each_entry_rcu_2 (entry, head, member)：类似于cds_hlist_for_each_entry_2()，但允许并发读者。
 当然，至少在没有很大一部分RCU读取器的情况下，单个列表上的并行操作不能很好地扩展。因此，通常的方法是拥有大量列表，每个列表都可以独立操作。一种执行此操作的方法是将列表分组为哈希表，这些哈希表在单独的文章中介绍。
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
